@@ -82,6 +82,7 @@
   .badge.bucket{background:#fbeccf;color:#8a5a13}
   .badge.cat{background:#e8f1ff;color:#1f4e8c;border:1px solid #c9ddf5}
   .badge.cat.wait{background:#fff3df;color:#8a4b00;border-color:#f0d3a1}
+  .badge.ref{background:#eaf5ee;color:#2f6f4f;border-color:#cfe8d8}
   .badge.warn{background:#f7e5e1;color:var(--danger)}
   .cand-note{display:block;font-size:10.5px;color:#8b949a;margin-top:3px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .empty{background:#fff;border:1px dashed var(--line);border-radius:11px;padding:16px;text-align:center;color:var(--muted);font-size:12.5px;margin:8px 0}
@@ -232,7 +233,7 @@
           <p><b>板型（按芯片封装，不按型号首字母）：</b>顶配 = 运存+存储在同一个 eMCP/uMCP 封装里，CPU 独立，整板 2 颗；盖子板 = 运存 PoP 叠在 CPU 上，存储独立，496/556-ball LPDDR5；三颗料 = CPU、运存、存储三颗完全独立，对应 200/178-ball 板型；存储 = 单颗 eMMC/UFS，本身不含运存，板型要看主板运存。</p>
           <p><b>逐颗复核结果（499 行，498 个唯一型号，08EMCP08-EL3CV100 重复 1 行）：</b>顶配 415、盖子板 58、三颗料 0、存储 19、待核 7。三颗料是板级布局，不是芯片型号；原先把 4DR/4CR/32-16/64-32、SDAD、TY、JY 当成三颗料是错的——4DR/4CR 是闪迪 SDADA4DR/4CR 的省写（eMCP），TY/SDAD/JY 也是 eMCP。库内暂无可证实的独立三颗料芯片；遇到 200 球三颗料板，请按实物球数/丝印另建型号。</p>
           <p><b>待核：</b>037/044/036/073/046 五个 BT 板码和 JY008/JW941 无公开料号，只有同价 eMCP 组旁证，未硬判；遇到时先看实物球数和丝印。</p>
-          <p><b>价格：</b>最低回收价为主参考价；价2 为第二参考价，并列显示；缺一项就留空。“询价”表示该项暂无参考价。</p>
+          <p><b>价格：</b>最低回收价为主参考价；价2 为第二参考价，并列显示；缺一项就留空。“询价”表示该项暂无参考价。标“参考”的型号是按同配置、同容量或同系列推算，不是原型号报价。</p>
           <p><b>496 / 556：</b>都是 LPDDR5/5X 运存颗粒的 FBGA 球数；这次把 496/556 型号补进库，价2按基础容量价，其他容量写在备注和别名里，可按数字搜到。</p>
           <p><b>D3 / D4：</b>D3 = LPDDR3，D4 = LPDDR4X。D3 的 B809/B614 是 LPDDR3；D4 的 B425/B422/H9HP52AC 是 LPDDR4X。D3 里的 H9HQ52ACP 是 uMCP（LPDDR4X），单独按 uMCP 处理。</p>
           <p><b>Bxxx：</b>B614 / B809 / B425 / B422 是三星料号 hyphen 后的版本/封装后缀，同一后缀对应多个完整型号：B809 = KMRC1000BM-B809（3+64）/ KMRC10014M-B809（4+64）；B425 = KMDH/KMDP（4+64）/ KMDX（3+32）；B515 = KM3H6001CA / KM3H6001CM（6+64）；B625 = KMDC（4+64）/ KMDV（4+128）。</p>
@@ -1306,6 +1307,10 @@
     m._capsNorm = m._caps.map(x => x.replace(/\D/g, ""));
     m.cat = CAT[m.model] || catOf(m);
     m.wd = WD2[m.model] ?? null;
+    m.ref = REF[m.model] || null;
+    if (m.ref) m.price = Math.round(m.ref[0] * 1.10);
+    m.priceType = m.ref ? "参考价" : (m.price != null ? "最低回收价" : "询价");
+    if (m.ref) m.note = m.ref[1] + "；参考价，不是原型号报价";
     return m;
   }
 
@@ -1485,6 +1490,62 @@
     "KMWC10016M-B812":94,
     "KMWV6001JM-B817":168,
     "V6001JM-B817":168
+  };
+
+  const REF = {
+    "KMDH6001DA-B425":[160, "同组参考 KMDH6001DM-B422"],
+    "KM8F8001JA-B813":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F9001JM-B813":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F8001KM-B820":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F8001MM-B819":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F8001LM-B821":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F8001LM-B822":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F8001MM-B823":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F9001KM-B835":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F9001MM-B833":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F9001LM-B832":[205, "同配置参考 KM8F8001JM-B813"],
+    "KM8F8001LM-B813":[205, "同容量参考 8+256；10GB档"],
+    "KM8V8001LM-B813":[160, "同系列参考 KM8V8001JM-B813；10+128"],
+    "KM2F8001CM-B707":[205, "同配置参考 H9QT1G6DN6"],
+    "KM2P8001CM-B518":[100, "同组参考 KM2H7001CM-B518"],
+    "KMAS8001RM-BC06":[170, "同系列参考 KMAS9001PM-BC02"],
+    "KMAS9001UM-BC07":[170, "同系列参考 KMAS9001PM-BC02"],
+    "KMAS9001SM-BC05":[170, "同系列参考 KMAS9001PM-BC02"],
+    "KMAS9001VM-BC08":[170, "同系列参考 KMAS9001PM-BC02"],
+    "KMJIB001VM-BC17":[180, "同配置参考 KMJIA001RM-BC07"],
+    "KMJIB001SM-BC11":[180, "同配置参考 KMJIA001RM-BC07"],
+    "KMJIB001TM-BC13":[180, "同配置参考 KMJIA001RM-BC07"],
+    "KMJIA001TM-BC10":[180, "同配置参考 KMJIA001RM-BC07"],
+    "KMJIA001UM-BC12":[180, "同配置参考 KMJIA001RM-BC07"],
+    "KMJS9001UM-BG05":[180, "同配置参考 KMJS9001RM-BG01"],
+    "KMJS9001VM-BG06":[180, "同配置参考 KMJS9001RM-BG01"],
+    "KMJS8001SM-BG05":[205, "同容量参考 8+256；297球"],
+    "KMJS8001TM-BG06":[205, "同容量参考 8+256；297球"],
+    "KMJS8001UM-BG07":[205, "同容量参考 8+256；297球"],
+    "H9HQ21AFAMAD":[205, "同配置参考 H9HQ21AFAMZDAR"],
+    "H9HQ22AFAMAD":[205, "同配置参考 H9HQ21AFAMZDAR"],
+    "H9HQ22AFAMZDAR":[205, "同配置参考 H9HQ21AFAMZDAR"],
+    "H9QG9GECN6X203N":[100, "同配置参考 H9HQ53AECMMDARKEM"],
+    "H9QG9GEAN6X155N":[100, "同配置参考 H9HQ53AECMMDARKEM"],
+    "H9QT0GEEN6X202N":[160, "同配置参考 H9HQ15AECMBDAR"],
+    "H9RT0GEA65X030R":[160, "同配置参考 H9HQ15AECMBDAR"],
+    "H9QT1GGA06":[230, "同配置参考 H9QT1GGBN6*129"],
+    "H9QT1GGBP6":[230, "同配置参考 H9QT1GGBN6*129"],
+    "H9QT1GGBM6":[230, "同配置参考 H9QT1GGBN6*129"],
+    "H9QT1GGAO6":[230, "同配置参考 H9QT1GGBN6*129"],
+    "H9RT1GGA06":[205, "同配置参考 H9RT1G6AS5*037N"],
+    "H9RT1GGA85":[205, "同配置参考 H9RT1G6AS5*037N"],
+    "H9RT1GGA16":[205, "同配置参考 H9RT1G6AS5*037N"],
+    "MT29VZZZAD8DKKBT":[160, "同配置参考 4+64 eMCP"],
+    "MT29VZZZBD9FQKPR":[160, "同配置参考 6+128 uMCP"],
+    "MT29VZZZCDA1SKPR-046":[170, "参考 JZ396；8+256"],
+    "JZ305":[160, "同配置参考 8+128"],
+    "JZ306":[160, "同配置参考 JZ151"],
+    "JZ307":[160, "同配置参考 JZ151"],
+    "K3LK4K40CM-BGCP":[185, "同容量参考 12+128"],
+    "K3LK3K30EM-BGCN":[165, "同容量参考 8+128"],
+    "H58GG6MK6GX037":[185, "同容量参考 12+128"],
+    "H9JKNNNFB3AECR-N6H":[165, "同容量参考 8+128"]
   };
 
   const BUILTIN = RAW.map((r, i) => prep({
@@ -1714,13 +1775,14 @@
     $("#candidates").innerHTML = results.map(({m}, i) => {
       const p1 = m.price != null ? `¥${m.price}` : "询价";
       const p1Cls = m.price != null ? "price" : "price na";
-      const prices = `<span class="prices"><span class="pline"><span class="plabel">最低回收价</span><span class="${p1Cls}">${p1}</span></span>${m.wd != null ? `<span class="pline"><span class="plabel p2">价2</span><span class="price2">¥${m.wd}</span></span>` : ""}</span>`;
+      const priceLabel = m.ref ? "参考价" : "最低回收价";
+      const prices = `<span class="prices"><span class="pline"><span class="plabel">${priceLabel}</span><span class="${p1Cls}">${p1}</span></span>${m.wd != null ? `<span class="pline"><span class="plabel p2">价2</span><span class="price2">¥${m.wd}</span></span>` : ""}</span>`;
       const bucket = m.bucket ? `<span class="badge bucket">${esc(m.bucket)}</span>` : "";
       const cat = m.cat ? `<span class="badge cat${m.cat==="待核"?" wait":""}">${esc(m.cat)}</span>` : "";
       const balls = m.balls ? `<span>${m.balls}球</span>` : "";
       return `<button class="cand ${i===0?"first":""}" data-id="${m.id}" data-fam="${esc(m.family)}">
         <span class="cand-top"><span class="model">${highlight(m.model, q)}</span>${prices}</span>
-        <span class="meta"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${balls}<span>${esc(cfg(m))}</span>${cat}${bucket}</span>
+        <span class="meta"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${balls}<span>${esc(cfg(m))}</span>${cat}${bucket}${m.ref ? `<span class="badge ref">参考</span>` : ""}</span>
         ${(m.note || (m.aliases && m.aliases.length)) ? `<span class="cand-note">${esc(m.note || "")}${m.aliases && m.aliases.length ? (m.note ? " · 别名 " : "别名 ") + esc(m.aliases.join(" / ")) : ""}</span>` : ""}
       </button>`;
     }).join("");
@@ -1743,6 +1805,8 @@
       priceRef: m.price,
       priceActual: m.price,
       wdRef: m.wd,
+      priceType: m.priceType,
+      ref: !!m.ref,
       note: m.note || "",
       conf: m.conf
     };
@@ -1752,7 +1816,7 @@
     renderCandidates();
     renderRecords();
     renderStats();
-    toast(`已录入 ${m.model} · ${cfg(m)}${m.bucket ? " · " + m.bucket : ""} · 最低回收价 ${m.price != null ? "¥" + m.price : "询价"}${m.wd != null ? " · 价2 ¥" + m.wd : ""}`);
+    toast(`已录入 ${m.model} · ${cfg(m)}${m.bucket ? " · " + m.bucket : ""} · ${m.priceType} ${m.price != null ? "¥" + m.price : ""}${m.wd != null ? " · 价2 ¥" + m.wd : ""}`);
   }
 
   function renderRecords(){
@@ -1776,7 +1840,7 @@
       const rc = r.cat || catOf({model:r.model, family:r.family, balls:r.balls, aliases:[]});
       return `<div class="rec" data-id="${r.id}">
         <div class="rec-top"><span class="rec-model">${esc(r.model)}</span><span class="rec-time">${new Date(r.ts).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}</span></div>
-        <div class="rec-meta"><span class="badge fam">${esc(r.family || "-")}</span>${rc ? `<span class="badge cat${rc==="待核"?" wait":""}">${esc(rc)}</span>` : ""}<span>${esc(r.config || "—")}</span>${r.bucket ? `<span class="badge bucket">${esc(r.bucket)}</span>` : ""}<span class="plabel">最低回收价</span><span>${r.priceRef == null ? "询价" : "¥"+r.priceRef}</span>${r.wdRef != null ? `<span class="plabel p2">价2</span><span class="price2">¥${r.wdRef}</span>` : ""}<span>${esc(r.batch || "")}</span></div>
+        <div class="rec-meta"><span class="badge fam">${esc(r.family || "-")}</span>${rc ? `<span class="badge cat${rc==="待核"?" wait":""}">${esc(rc)}</span>` : ""}<span>${esc(r.config || "—")}</span>${r.bucket ? `<span class="badge bucket">${esc(r.bucket)}</span>` : ""}<span class="plabel">${esc(r.priceType || (r.priceRef != null ? "最低回收价" : "询价"))}</span>${r.priceType==="参考价" ? `<span class="badge ref">参考</span>` : ""}<span>${r.priceRef == null ? "询价" : "¥"+r.priceRef}</span>${r.wdRef != null ? `<span class="plabel p2">价2</span><span class="price2">¥${r.wdRef}</span>` : ""}<span>${esc(r.batch || "")}</span></div>
         <div class="rec-actions"><span style="font-size:11px;color:#7b858c">实收 ¥</span><input class="actual-price" type="number" inputmode="decimal" value="${price}" placeholder="0"><button class="del">删除</button></div>
         ${r.note ? `<div class="rec-note">${esc(r.note)}</div>` : ""}
       </div>`;
@@ -1827,7 +1891,7 @@
     }
     $("#modelList").innerHTML = results.map(({m}) => `<div class="model-row">
       <div class="m"><b>${esc(m.model)}</b></div>
-      <div class="d"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${m.cat ? `<span class="badge cat${m.cat==="待核"?" wait":""}">${esc(m.cat)}</span>` : ""}${m.balls ? `<span>${m.balls}球</span>` : ""}<span>${esc(cfg(m))}</span>${m.bucket ? `<span class="badge bucket">${esc(m.bucket)}</span>` : ""}<span class="plabel">最低回收价</span>${m.price != null ? `<span>¥${m.price}</span>` : `<span>询价</span>`}${m.wd != null ? `<span class="plabel p2">价2</span><span class="price2">¥${m.wd}</span>` : ""}${m.custom ? `<button class="del" data-del="${esc(m.id)}">删除</button>` : ""}</div>
+      <div class="d"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${m.cat ? `<span class="badge cat${m.cat==="待核"?" wait":""}">${esc(m.cat)}</span>` : ""}${m.balls ? `<span>${m.balls}球</span>` : ""}<span>${esc(cfg(m))}</span>${m.bucket ? `<span class="badge bucket">${esc(m.bucket)}</span>` : ""}<span class="plabel">${m.ref ? "参考价" : "最低回收价"}</span>${m.price != null ? `<span>¥${m.price}</span>` : `<span>询价</span>`}${m.ref ? `<span class="badge ref">参考</span>` : ""}${m.wd != null ? `<span class="plabel p2">价2</span><span class="price2">¥${m.wd}</span>` : ""}${m.custom ? `<button class="del" data-del="${esc(m.id)}">删除</button>` : ""}</div>
       ${m.note ? `<div class="d">${esc(m.note)}</div>` : ""}
     </div>`).join("");
     if (!q && ALL.length > 60) $("#modelList").innerHTML += `<div class="more">只显示前 60 条；上面搜索可查全库。</div>`;
@@ -1905,11 +1969,11 @@
   }
 
   function buildCSV(){
-    const header = ["时间","批次","型号","类别","品牌","家族","球数","配置","报价桶","最低回收价","价2","成交价","备注"];
+    const header = ["时间","批次","型号","类别","品牌","家族","球数","配置","报价桶","价格类型","最低回收价","价2","成交价","备注"];
     const rows = state.records.map(r => [
       new Date(r.ts).toLocaleString("zh-CN"),
       r.batch, r.model, r.cat || catOf({model:r.model, family:r.family, balls:r.balls, aliases:[]}), r.brand, r.family, r.balls == null ? "" : r.balls,
-      r.config, r.bucket || "", r.priceRef == null ? "" : r.priceRef,
+      r.config, r.bucket || "", r.priceType || (r.priceRef != null ? "最低回收价" : "询价"), r.priceRef == null ? "" : r.priceRef,
       r.wdRef == null ? "" : r.wdRef, r.priceActual == null ? "" : r.priceActual, r.note || ""
     ]);
     return "\ufeff" + [header].concat(rows).map(row => row.map(csvCell).join(",")).join("\r\n");
