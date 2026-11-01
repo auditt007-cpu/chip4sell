@@ -1,0 +1,1295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>芯片型号快查</title>
+<style>
+  :root{
+    --bg:#f1ede5; --card:#fffdf8; --ink:#1b232a; --muted:#6b757d; --line:#ddd4c4;
+    --navy:#12212b; --amber:#e9a23b; --amber-deep:#b3541e;
+    --blue:#2f6f9f; --teal:#2f8f7a; --brown:#8a6d3b; --purple:#6a5acd; --orange:#b3541e; --grey:#7b858c;
+    --danger:#b23a2e;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100%; }
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;overflow:hidden}
+  .app{max-width:760px;height:100dvh;margin:0 auto;padding:6px 10px 8px;display:flex;flex-direction:column}
+  header{flex:0 0 auto;padding:4px 2px 2px}
+  .topline{display:flex;align-items:baseline;gap:8px}
+  h1{font-size:22px;margin:0;letter-spacing:-.02em}
+  .ver{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 6px}
+  .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .context{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:9px;font-size:12px;color:var(--muted)}
+  .context label{display:flex;align-items:center;gap:4px}
+  .context input{border:1px solid var(--line);border-radius:8px;padding:5px 7px;font-size:12.5px;background:#fff;color:var(--ink);min-width:0;width:96px;font-family:var(--sans)}
+  .today{margin-left:auto;font-size:11px}
+
+  .tabs{display:flex;gap:5px;flex:0 0 auto;z-index:30;padding:5px 0 4px}
+  .tab{flex:1;border:1px solid var(--line);background:#fff;color:#45515a;border-radius:11px;padding:9px 4px;font-size:13px;font-weight:650;font-family:var(--sans)}
+  .tab.on{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 6px 16px rgba(18,33,43,.16)}
+  main{flex:1 1 auto;min-height:0;position:relative}
+  .view{display:none;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .view.on{display:block}
+  #view-scan.on{display:flex;flex-direction:column;overflow:hidden}
+
+  #storageWarn{display:none;background:#fff3cd;border:1px solid #ecd9a4;color:#6b4d12;border-radius:10px;padding:8px 10px;font-size:12px;margin:6px 0}
+  #storageWarn.on{display:block}
+
+  .query-wrap{display:flex;gap:7px;align-items:stretch;flex:0 0 auto}
+  #query{flex:1;min-width:0;font-size:27px;font-weight:750;letter-spacing:.05em;padding:11px 12px;border:2px solid var(--navy);border-radius:13px;background:#fff;color:var(--ink);font-family:var(--mono);outline:none}
+  #query::placeholder{font-size:14px;font-weight:400;letter-spacing:0;color:#9aa2a8;font-family:var(--sans)}
+  #query:focus{box-shadow:0 0 0 3px rgba(233,162,59,.25)}
+  #clearQuery{border:1px solid var(--line);background:#fff;border-radius:11px;padding:0 12px;font-size:12px;color:var(--muted);font-family:var(--sans)}
+
+  .filters{display:flex;gap:5px;overflow-x:auto;padding:5px 0 0;scrollbar-width:none;flex:0 0 auto;min-height:26px}
+  .filters::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:#4b565d;border-radius:999px;padding:4px 9px;font-size:11.5px;font-family:var(--sans);line-height:1.4}
+  .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .chip .cnt{opacity:.55;font-size:10px;margin-left:2px}
+
+  .hint-row{display:flex;align-items:center;gap:5px;flex:0 0 auto;padding:4px 0 2px}
+  .hint{flex:1;font-size:11.5px;color:var(--muted);padding:0;min-height:18px;line-height:1.4}
+  .hint b{color:var(--amber-deep)}
+  .mini{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 7px;font-size:10.5px;color:#5c6870;font-family:var(--sans)}
+  .count-pill{flex:0 0 auto;font-size:10.5px;background:#fbeccf;color:#8a5a13;border-radius:999px;padding:2px 7px;font-weight:650}
+
+  .candidates{flex:1 1 auto;min-height:78px;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+  .cand{display:block;width:100%;min-width:0;overflow:hidden;text-align:left;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--grey);border-radius:10px;padding:7px 9px;margin:5px 0;font-family:var(--sans);color:var(--ink);position:relative}
+  .cand:active{transform:scale(.995)}
+  .cand.first{border-color:#e9c98f;box-shadow:0 4px 14px rgba(179,84,30,.10)}
+  .cand[data-fam="eMCP"]{border-left-color:var(--blue)}
+  .cand[data-fam="uMCP"]{border-left-color:var(--teal)}
+  .cand[data-fam="eMMC"]{border-left-color:var(--brown)}
+  .cand[data-fam="UFS"]{border-left-color:var(--purple)}
+  .cand[data-fam="LPDDR5"]{border-left-color:var(--orange)}
+  .cand-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .model{font-family:var(--mono);font-size:15.5px;font-weight:750;letter-spacing:.01em;word-break:break-all;line-height:1.3}
+  .model mark{background:#ffe19a;color:inherit;border-radius:2px;padding:0 1px}
+  .price{flex:0 0 auto;font-size:16px;font-weight:800;color:var(--amber-deep);font-family:var(--mono)}
+  .price.na{font-size:11px;color:var(--muted);font-weight:600;font-family:var(--sans)}
+  .meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:5px;font-size:11.5px;color:#59656d}
+  .badge{display:inline-block;border-radius:999px;padding:1px 6px;font-size:10.5px;line-height:1.55;background:#eef1f2;color:#48545c;font-weight:650}
+  .badge.fam{background:#e7eef4;color:var(--blue)}
+  .badge.bucket{background:#fbeccf;color:#8a5a13}
+  .badge.warn{background:#f7e5e1;color:var(--danger)}
+  .cand-note{display:block;font-size:10.5px;color:#8b949a;margin-top:3px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .empty{background:#fff;border:1px dashed var(--line);border-radius:11px;padding:16px;text-align:center;color:var(--muted);font-size:12.5px;margin:8px 0}
+  .empty b{color:var(--ink)}
+
+  .keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;flex:0 0 auto}
+  .key{height:46px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--ink);font-size:20px;font-weight:750;font-family:var(--mono);box-shadow:0 2px 0 rgba(0,0,0,.04)}
+  .key:active{transform:translateY(1px);background:#f7f1e5}
+  .key.fn{font-size:11.5px;font-family:var(--sans);font-weight:650;color:#5c6870;background:#fbf8f1}
+  .key.wide{grid-column:span 2}
+  .key.back{color:var(--amber-deep);background:#fff7e9;border-color:#efd9b2}
+  .key.clear{color:var(--danger);background:#fdf0ed;border-color:#efd0c9}
+  .quick-actions{display:flex;gap:7px;margin-top:8px}
+  .quick-actions button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px;font-size:12.5px;color:#4b565d;font-family:var(--sans)}
+  .quick-actions button.danger{color:var(--danger)}
+
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:4px 0 10px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 8px;text-align:center}
+  .stat .n{font-size:21px;font-weight:800;font-family:var(--mono);line-height:1.25}
+  .stat .l{font-size:10.5px;color:var(--muted);margin-top:1px}
+  .stat.hot .n{color:var(--amber-deep)}
+  .stat.warn .n{color:var(--danger)}
+  .actions{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px}
+  .actions button,.actions .filebtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 10px;font-size:12px;font-family:var(--sans);color:#3e4a52}
+  .actions button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .actions button.danger{color:var(--danger);border-color:#e4c3bd}
+  .filebtn{position:relative;overflow:hidden;display:inline-block}
+  .filebtn input{position:absolute;inset:0;opacity:0;font-size:200px;cursor:pointer}
+  h3{font-size:14px;margin:16px 0 7px;color:#34424a}
+  .stat-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:8px 0}
+  .bar-row{display:grid;grid-template-columns:92px 1fr 48px;gap:8px;align-items:center;font-size:11.5px;margin:5px 0;color:#4f5b63}
+  .bar{height:9px;background:#eee7d9;border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--amber);border-radius:999px}
+  .bar-row .v{text-align:right;font-family:var(--mono);font-size:11px;color:#5b666d}
+  .rec{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:8px 10px;margin:6px 0}
+  .rec-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .rec-model{font-family:var(--mono);font-size:13px;font-weight:750;word-break:break-all}
+  .rec-time{font-size:10px;color:#9aa2a8;flex:0 0 auto}
+  .rec-meta{font-size:11px;color:#69747b;margin-top:2px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .rec-actions{display:flex;gap:5px;align-items:center;margin-top:5px}
+  .rec-actions input{width:76px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;font-size:12px;font-family:var(--mono);background:#fff}
+  .rec-actions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 7px;font-size:11px;color:var(--muted);font-family:var(--sans)}
+  .rec-actions .del{color:var(--danger);border-color:#e6c8c2}
+  .rec-note{font-size:10.5px;color:#9aa2a8;margin-top:3px}
+
+  .library-head{display:flex;align-items:baseline;gap:8px;margin:4px 0 6px}
+  .library-head b{font-size:16px}
+  .library-head span{font-size:11px;color:var(--muted)}
+  #modelQuery{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;background:#fff;font-family:var(--sans);margin:4px 0 8px}
+  .add-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px;margin:8px 0}
+  .add-box summary{cursor:pointer;font-size:13px;font-weight:650;color:var(--amber-deep)}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+  .form-grid input,.form-grid select{border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:12.5px;background:#fff;font-family:var(--sans);min-width:0}
+  .form-grid .full{grid-column:span 2}
+  .form-grid button{grid-column:span 2;border:0;border-radius:9px;padding:9px;background:var(--navy);color:#fff;font-size:13px;font-weight:650;font-family:var(--sans)}
+  .model-row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px;margin:5px 0}
+  .model-row .m{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .model-row .m b{font-family:var(--mono);font-size:12.5px;word-break:break-all}
+  .model-row .m span{font-size:10.5px;color:#9aa2a8;flex:0 0 auto}
+  .model-row .d{font-size:10.5px;color:#7b858c;margin-top:2px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .model-row .del{border:1px solid #e6c8c2;background:#fff;color:var(--danger);border-radius:6px;font-size:10px;padding:1px 5px}
+  .more{text-align:center;font-size:11.5px;color:var(--muted);padding:10px}
+
+  #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);max-width:90vw;background:var(--navy);color:#fff;border-radius:11px;padding:10px 14px;font-size:12.5px;box-shadow:0 12px 32px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.18s;z-index:80;text-align:center}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width:480px){
+    .today{display:none}
+    .context{gap:4px 8px}
+    .context input{width:80px;padding:3px 6px}
+  }
+  @media (max-width:420px){
+    .app{padding:5px 8px 6px}
+    h1{font-size:19px}
+    #query{font-size:23px;padding:8px 10px}
+    .key{height:44px;font-size:19px}
+    .summary{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-height:700px){
+    .sub{display:none}
+    header{padding-top:2px}
+    .context{margin-top:2px}
+    .key{height:42px}
+    .keypad{gap:5px;margin-top:4px}
+    .cand{padding:6px 8px;margin:4px 0}
+  }
+  @media (min-width:700px){
+    .key{height:48px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="topline"><h1>芯片型号快查</h1><span class="ver">v0.5</span></div>
+    <div class="sub">输数字 → 实时候选 → 点一下入库</div>
+    <div class="context">
+      <label>批次 <input id="batch" autocomplete="off"></label>
+      <span class="today" id="today"></span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab on" data-tab="scan">录入</button>
+    <button class="tab" data-tab="records">记录 / 统计</button>
+    <button class="tab" data-tab="models">型号库</button>
+  </nav>
+
+  <div id="storageWarn">浏览器本地存储不可用：记录只保存在当前页面，关闭前请点“导出 CSV”。</div>
+
+  <main>
+    <section class="view on" id="view-scan">
+      <div class="query-wrap">
+        <input id="query" placeholder="输入型号里的数字，如 614 / 1000 809" autocomplete="off" spellcheck="false">
+        <button id="clearQuery">清空</button>
+      </div>
+      <div class="filters" id="brandChips"></div>
+      <div class="filters" id="familyChips"></div>
+      <div class="hint-row"><div class="hint" id="hint"></div><span class="count-pill" id="scanCount">0 块</span><button id="unknownBtn" class="mini">未知</button><button id="undoBtn" class="mini">撤销</button></div>
+      <div class="candidates" id="candidates"></div>
+      <div class="keypad" id="keypad">
+        <button class="key" data-key="1">1</button><button class="key" data-key="2">2</button><button class="key" data-key="3">3</button><button class="key fn back" data-key="back">⌫</button>
+        <button class="key" data-key="4">4</button><button class="key" data-key="5">5</button><button class="key" data-key="6">6</button><button class="key fn" data-key="space">空格</button>
+        <button class="key" data-key="7">7</button><button class="key" data-key="8">8</button><button class="key" data-key="9">9</button><button class="key fn clear" data-key="clear">清空</button>
+        <button class="key wide" data-key="0">0</button><button class="key fn wide" data-key="letters">字母键盘</button>
+      </div>
+    </section>
+
+    <section class="view" id="view-records">
+      <div class="summary" id="recordSummary"></div>
+      <div class="actions">
+        <button class="primary" id="exportCsv">导出 CSV</button>
+        <button id="backupJson">备份 JSON</button>
+        <label class="filebtn">恢复 JSON<input id="restoreFile" type="file" accept=".json"></label>
+        <button class="danger" id="clearRecords">清空记录</button>
+      </div>
+      <div id="statBox"></div>
+      <h3>录入明细</h3>
+      <div id="recordList"></div>
+    </section>
+
+    <section class="view" id="view-models">
+      <div class="library-head"><b id="modelCount"></b><span>按型号/数字搜</span></div>
+      <details class="add-box" open>
+        <summary>口径说明：496 / D3 D4 / Bxxx / JZ</summary>
+        <div class="note" style="margin:8px 0 0;font-size:12px;line-height:1.7">
+          <p><b>496：</b>是 LPDDR5/5X 运存颗粒的一档 FBGA 球数（三星、海力士、长鑫都有 496Ball 产品）；496 桶是按这个运存档收整板，不是 uMCP 合封。</p>
+          <p><b>D3 / D4：</b>D3 = LPDDR3，D4 = LPDDR4X。D3 的 B809/B614 是 LPDDR3；D4 的 B425/B422/H9HP52AC 是 LPDDR4X。D3 里的 H9HQ52ACP 是 uMCP（LPDDR4X），单独按 uMCP 处理。</p>
+          <p><b>Bxxx：</b>B614 / B809 / B425 / B422 是三星料号 hyphen 后的版本/封装后缀，同一后缀对应多个完整型号：B809 = KMRC1000BM-B809（3+64）/ KMRC10014M-B809（4+64）；B425 = KMDH/KMDP（4+64）/ KMDX（3+32）；B515 = KM3H6001CA / KM3H6001CM（6+64）；B625 = KMDC（4+64）/ KMDV（4+128）。</p>
+          <p><b>JZ：</b>JZ103 = 4+128，JZ151 = 6+128，JZ305/306/307 = 8+256，JZ524/525 = 12+256。</p>
+        </div>
+      </details>
+      <input id="modelQuery" placeholder="搜型号或数字，如 614 / B813 / JZ" autocomplete="off" spellcheck="false">
+      <details class="add-box">
+        <summary>新增型号（会保存在本机）</summary>
+        <form id="addForm" class="form-grid">
+          <input name="model" class="full" placeholder="完整型号，如 KMRC1000BM-B809" required>
+          <select name="brand"><option>三星</option><option>海力士</option><option>美光</option><option>铠侠</option><option>闪迪</option><option>JZ</option><option>通用</option></select>
+          <select name="family"><option>eMCP</option><option>uMCP</option><option>eMMC</option><option>UFS</option><option>LPDDR5</option><option>其他</option></select>
+          <input name="balls" type="number" placeholder="球数，如 221">
+          <input name="ram" type="number" placeholder="运存 GB">
+          <input name="rom" type="number" placeholder="字库 GB">
+          <input name="bucket" placeholder="报价桶，如 D3">
+          <input name="price" type="number" placeholder="参考价，如 135">
+          <input name="aliases" placeholder="别名，用逗号分隔">
+          <input name="note" class="full" placeholder="备注">
+          <button type="submit">加入型号库</button>
+        </form>
+      </details>
+      <div id="modelList"></div>
+    </section>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // [model, brand, family, balls, ram, rom, bucket, price, note, conf, rank, aliases]
+  const RAW = [
+    ["JZ622","JZ","",null,null,256,null,194,"","",5,[]],
+    ["JZ486","JZ","",null,null,256,null,194,"","",5,[]],
+    ["KM81A001MM-BC11","三星","uMCP",254,null,256,null,248,"","",5,[]],
+    ["JZ520","JZ","",null,null,256,null,205,"","",5,[]],
+    ["JZ412","JZ","",null,null,256,null,194,"","",5,[]],
+    ["H9RT2GGA65","海力士","uMCP",297,null,256,null,194,"","",5,[]],
+    ["JZ487","JZ","",null,null,256,null,194,"","",5,[]],
+    ["H9QT1GGBN6*129","海力士","uMCP",254,null,256,null,248,"","",5,["H9QT1GGBN6"]],
+    ["H9QT1GGCN6","海力士","uMCP",254,null,256,null,248,"","",5,[]],
+    ["KM8F8001MM-B813","三星","uMCP",254,null,256,null,248,"","",5,[]],
+    ["KM8F9001MM-B830","三星","uMCP",254,null,256,null,248,"","",5,[]],
+    ["JZ303","JZ","",null,null,256,null,194,"","",5,[]],
+    ["JZ521","JZ","",null,null,256,null,194,"","",5,[]],
+    ["KMJS9001RM-BG01","三星","uMCP",297,12,256,null,194,"","",7,["KMJS9001RM","BG01"]],
+    ["H9RT1GGA65","海力士","uMCP",297,null,256,null,194,"","",5,[]],
+    ["KMJIA001RM-BC07","三星","uMCP",254,null,256,null,194,"","",5,[]],
+    ["H9QT1G6DN6","海力士","uMCP",254,6,256,null,221,"","",7,["H9QT1G6DN6"]],
+    ["KM8B8001CM-BC01","三星","uMCP",254,null,256,null,221,"","",5,[]],
+    ["KM8F8001JM-B813","三星","uMCP",254,8,256,null,221,"","",8,["KM8F8001JM","B813"]],
+    ["H9HR21JFA3MEVRK6M","海力士","",null,null,256,null,184,"","",5,[]],
+    ["H9RT1G6AS5*037N","海力士","uMCP",297,null,256,null,221,"","",5,["H9RT1G6AS5"]],
+    ["H9HQ21AFAMZDARKEM","海力士","uMCP",254,null,256,null,221,"","",5,[]],
+    ["JZ192","JZ","",null,null,256,null,184,"","",5,[]],
+    ["KM8F9001JA-B816","三星","uMCP",254,8,256,null,184,"","",5,["KM8F9001JA","B816"]],
+    ["KMAS9001PM-BC02","三星","uMCP",254,null,256,null,184,"","",5,[]],
+    ["JZ467","JZ","",null,null,256,null,184,"","",5,[]],
+    ["JZ361","JZ","",null,null,256,null,184,"","",5,[]],
+    ["KM2B8001CM-BB01","三星","uMCP",254,null,256,null,194,"","",5,[]],
+    ["H9HQ21AECMZDAR","海力士","uMCP",254,null,256,null,194,"","",5,[]],
+    ["H9HQ22AECMMDARKEM","海力士","uMCP",254,null,256,null,194,"","",5,[]],
+    ["JZ199","JZ","",null,null,256,null,130,"","",5,[]],
+    ["V7001JM-B810(A11)","三星","uMCP",254,8,128,null,173,"","",5,[]],
+    ["H9HQ15AFAMBDRA","海力士","uMCP",254,8,128,null,173,"","",5,[]],
+    ["H9HQ15AFAMADRA","海力士","uMCP",254,8,128,null,173,"","",5,[]],
+    ["KM8V7001JM-B810","三星","uMCP",254,8,128,null,173,"","",6,["KM8V7001JM","B810"]],
+    ["KM8V8001JM-B813","三星","uMCP",254,8,128,null,173,"","",5,[]],
+    ["H9HQ16AFAMMDAR","海力士","uMCP",254,8,128,null,173,"","",5,[]],
+    ["H9HQ15AFAMADAR","海力士","uMCP",254,8,128,null,173,"","",5,[]],
+    ["H9QT0G6CN6 X146","海力士","uMCP",254,8,128,null,173,"","",5,[]],
+    ["KM8L9001JA-B624","三星","uMCP",254,8,128,null,173,"","",5,[]],
+    ["KM8V7001JA-B813","三星","uMCP",254,8,128,null,173,"","",5,[]],
+    ["KM8V9001JM-B813","三星","uMCP",254,8,128,"UMCP",173,"","",10,["KM8V9001JM","B813"]],
+    ["KM8L9001JM-B624","三星","uMCP",254,8,128,null,173,"","",5,[]],
+    ["KMAG9001QM-B814","三星","uMCP",254,8,128,null,130,"","",5,[]],
+    ["KMAG9001PM-B814","三星","uMCP",254,8,128,null,130,"","",5,[]],
+    ["KMWV6001JM-B817","三星","eMCP",254,8,128,null,130,"","",5,[]],
+    ["JZ266","JZ","",null,8,128,null,130,"","",5,[]],
+    ["JZ152","JZ","",null,8,128,null,173,"","",5,[]],
+    ["JZ387","JZ","",null,8,128,null,130,"","",5,[]],
+    ["JZ360","JZ","",null,8,128,null,130,"","",5,[]],
+    ["V6001CB-B708","三星","uMCP",254,6,128,null,167,"","",5,[]],
+    ["V6001CA-B708","三星","uMCP",254,6,128,null,167,"","",5,[]],
+    ["KM5V8001DM-B622","三星","uMCP",254,6,128,null,173,"","",5,[]],
+    ["H9HQ15AECMADAR","海力士","uMCP",254,6,128,null,167,"","",5,[]],
+    ["2Q7001CM-BB01","三星","uMCP",254,6,128,null,173,"","",5,[]],
+    ["KM3V6001CM-B705","三星","eMCP",254,6,128,"ECMP",173,"","",9,["KM3V6001CM","B705"]],
+    ["KM3V6001CA-B708","三星","eMCP",254,6,128,null,173,"","",5,[]],
+    ["H9HP16AECMMDARKMM","海力士","eMCP",254,6,128,null,173,"","",5,[]],
+    ["KM5L9000CM-B424","三星","uMCP",254,6,128,null,173,"","",6,["KM5L9000CM","B424"]],
+    ["KM2L9001CM-B518","三星","uMCP",254,6,128,null,173,"","",5,[]],
+    ["KM2V7001CM-B706","三星","uMCP",254,6,128,null,173,"","",5,[]],
+    ["KM2V8001CM-B707","三星","uMCP",254,6,128,null,173,"","",5,[]],
+    ["H9HQ15AECMBDAR","海力士","uMCP",254,6,128,null,173,"","",5,[]],
+    ["H9HQ16AECMMDARKEM","海力士","uMCP",254,6,128,null,173,"","",5,[]],
+    ["H9QT0GECN6 X145","海力士","uMCP",254,6,128,null,173,"","",5,[]],
+    ["JZ114","JZ","",null,6,128,null,119,"","",5,[]],
+    ["4DR-128G","通用","",null,6,128,null,119,"","",5,[]],
+    ["JZ151","JZ","uMCP",254,6,128,null,173,"","",6,["JZ151"]],
+    ["JZ100","JZ","",null,6,128,null,119,"","",5,[]],
+    ["JZ386","JZ","",null,6,128,null,173,"","",5,[]],
+    ["JZ188","JZ","",null,6,128,null,119,"","",5,[]],
+    ["JZ105","JZ","",null,6,128,null,119,"","",5,[]],
+    ["KMWV50017M-B812","三星","eMCP",254,4,128,null,151,"","",5,[]],
+    ["KMDV6001DM-B620","三星","eMCP",254,4,128,"EMCP",184,"","",9,["KMDV6001DM","B620"]],
+    ["KMDV6001DA-B620","三星","eMCP",254,4,128,null,184,"","",5,[]],
+    ["KM5V7001DM-B621","三星","uMCP",254,4,128,null,151,"","",5,[]],
+    ["KMDV6001DM(DA)-B620","三星","eMCP",254,4,128,null,173,"","",5,["KMDV6001DM-B620","KMDV6001DA-B620"]],
+    ["KMDV6001DB-B625","三星","eMCP",254,4,128,null,173,"","",5,[]],
+    ["H9HP16ACPMMD","海力士","eMCP",254,4,128,null,151,"","",5,[]],
+    ["KMRV50014M-B809","三星","",null,4,128,null,119,"","",5,[]],
+    ["KM5V700DM-B621","三星","uMCP",254,4,128,null,151,"","",5,[]],
+    ["KM5V8001DM-B622","三星","uMCP",254,4,128,null,151,"","",7,["KM5V8001DM","B622"]],
+    ["H9HQ16ACPMMD","海力士","uMCP",254,4,128,null,151,"","",5,[]],
+    ["HQ15AC","海力士","uMCP",254,4,128,null,151,"","",5,[]],
+    ["JZ150","JZ","",null,4,128,null,151,"","",5,[]],
+    ["H9QT0G5CN6","海力士","uMCP",254,4,128,null,151,"","",5,[]],
+    ["KM5L9001DA-B424","三星","uMCP",254,4,128,null,151,"","",5,[]],
+    ["JZ385","JZ","",null,4,128,null,151,"","",5,[]],
+    ["KM5L9001DM-B424","三星","uMCP",254,4,128,null,151,"","",5,[]],
+    ["KMWV50017M-B812长条","三星","eMCP",254,4,128,null,81,"","",5,[]],
+    ["JZ103","JZ","eMCP",254,4,128,"EMCP",173,"","",8,["JZ103"]],
+    ["JZ187","JZ","",null,4,128,null,184,"","",5,[]],
+    ["JZ479","JZ","",null,4,128,null,76,"","",5,[]],
+    ["4CR-128G","通用","",null,4,128,null,76,"","",5,[]],
+    ["UMCP 4CR-128G","通用","uMCP",null,4,128,null,108,"","",5,[]],
+    ["JZ182","JZ","",null,4,128,null,76,"","",5,[]],
+    ["KM3H6001CM-B515","三星","eMCP",254,6,64,null,135,"","",5,["KM3H6001CM","B515"]],
+    ["KM2H7001CM-B518","三星","uMCP",254,6,64,null,108,"","",6,["KM2H7001CM","B518"]],
+    ["H9HQ54AECMMDARKEM","海力士","uMCP",254,6,64,null,108,"","",5,[]],
+    ["H9HQ53AECMMDARKEM","海力士","uMCP",254,6,64,null,108,"","",5,[]],
+    ["KM2P9001CM-B518","三星","uMCP",254,6,64,null,108,"","",5,[]],
+    ["KM3P6001CM-B517","三星","eMCP",254,6,64,null,108,"","",4,["KM3P6001CM","B517"]],
+    ["KM2H700CM-B518","三星","uMCP",254,6,64,null,108,"","",5,[]],
+    ["KMWC10017M-B812","三星","eMCP",254,6,64,null,108,"","",5,[]],
+    ["H9HP52AECMMDARKMM小个","海力士","eMCP",254,6,64,null,135,"","",5,[]],
+    ["KM3H6001CA-B515","三星","eMCP",254,6,64,null,135,"","",5,["KM3H6001CA","B515"]],
+    ["H9HQ54AECMMDAR","海力士","uMCP",254,6,64,null,108,"","",5,[]],
+    ["H9HP52AECMMDBRKMM大","海力士","eMCP",254,6,64,null,81,"","",5,[]],
+    ["UMCP 4DR-64G","通用","uMCP",null,6,64,null,81,"","",5,[]],
+    ["H9HP52AECMMDBRKMM长条","海力士","eMCP",254,6,64,null,81,"","",5,[]],
+    ["JZ052","JZ","",null,6,64,null,81,"","",5,[]],
+    ["4DR-64G","通用","",null,6,64,null,81,"","",5,[]],
+    ["JZ168","JZ","",null,6,64,null,81,"","",5,[]],
+    ["JZ441","JZ","",null,6,64,null,81,"","",5,[]],
+    ["KM5P9001DM-B424","三星","uMCP",254,4,64,null,140,"","",6,["KM5P9001DM","B424"]],
+    ["KM5P8001DM-B424","三星","uMCP",254,4,64,null,140,"","",6,["KM5P8001DM","B424"]],
+    ["KM5C7001DM-B622","三星","uMCP",254,4,64,null,140,"","",6,["KM5C7001DM","B622"]],
+    ["H9HQ53ACPMMDARKEM","海力士","uMCP",254,4,64,null,108,"","",5,[]],
+    ["KMRP60014A-B614","三星","eMCP",221,4,64,null,140,"","",5,[]],
+    ["KMDC6001DM-B625","三星","eMCP",254,4,64,null,140,"","",5,["KMDC6001DM","B625"]],
+    ["HQ52AC","海力士","uMCP",254,4,64,null,140,"","",5,[]],
+    ["KMRC10014M-B809","三星","eMCP",221,4,64,"D3",140,"","",10,["KMRC10014M","B809"]],
+    ["H9HP53ACPMMD","海力士","eMCP",254,4,64,null,108,"","",5,[]],
+    ["KMRH60014A-B614","三星","eMCP",221,4,64,"D3",140,"","",8,["B614"]],
+    ["KMRH60014M-B614","三星","eMCP",221,4,64,null,140,"","",5,[]],
+    ["H9TQ52ACLTMCUR","海力士","eMCP",221,4,64,null,140,"","",5,[]],
+    ["HM2P6001DA-B425","三星","eMCP",254,4,64,null,173,"","",5,[]],
+    ["H9HP52ACPMMD","海力士","eMCP",254,4,64,"D4",173,"","",9,["H9HP52ACP"]],
+    ["H9TQ53ACLTMCUR","海力士","eMCP",221,4,64,null,108,"","",5,[]],
+    ["H9HQ54ACPMMDAR","海力士","uMCP",254,4,64,null,108,"","",5,[]],
+    ["KMRP60014M-B614","三星","eMCP",221,4,64,"D3",140,"","",10,["B614"]],
+    ["H9HQ53ACPMMDAR","海力士","uMCP",254,4,64,null,108,"","",5,[]],
+    ["KMDH6001DM-B422","三星","eMCP",254,4,64,"D4",173,"","",10,["KMDH6001DM","B422"]],
+    ["KMDH6001DA-B422","三星","eMCP",254,4,64,"D4",173,"","",8,["KMDH6001DA","B422"]],
+    ["HM2H7001CM-B424","三星","uMCP",254,4,64,null,140,"","",5,[]],
+    ["H9HP52ACPMMDARKMM","海力士","eMCP",254,4,64,null,130,"","",5,[]],
+    ["H9HP52ACPMADARKMM","海力士","eMCP",254,4,64,null,130,"","",5,[]],
+    ["H9HQ53ACPMMD","海力士","uMCP",254,4,64,null,108,"","",5,[]],
+    ["H9HP53ACPMMDARKMM","海力士","eMCP",254,4,64,null,108,"","",5,[]],
+    ["KMDP6001DA-B425","三星","eMCP",254,4,64,"D4",173,"","",8,["KMDP6001DA","B425"]],
+    ["KMDP6001DB-B425","三星","eMCP",254,4,64,null,173,"","",5,[]],
+    ["KMWC10016M-B812","三星","eMCP",254,4,64,null,108,"","",5,[]],
+    ["KM5H7001DM-B424","三星","uMCP",254,4,64,null,108,"","",5,[]],
+    ["SDADA4CR-64G","闪迪","",null,4,64,null,97,"","",5,[]],
+    ["64-32-4BTA29","通用","",null,4,64,null,97,"","",5,[]],
+    ["JZ053","JZ","",null,4,64,null,97,"","",5,[]],
+    ["JZ186","JZ","",null,4,64,null,97,"","",5,[]],
+    ["JZ481","JZ","",null,4,64,null,97,"","",5,[]],
+    ["JZ484","JZ","",null,4,64,null,97,"","",5,[]],
+    ["H9AG9G5ANB","海力士","eMCP",254,4,64,null,97,"","",5,[]],
+    ["JZ109","JZ","",null,4,64,null,97,"","",5,[]],
+    ["HQ54AC","海力士","uMCP",254,4,64,null,97,"","",5,[]],
+    ["JZ049","JZ","eMCP",221,4,64,"221",97,"","",7,["JZ049"]],
+    ["JZ128","JZ","eMCP",221,4,64,"221",97,"","",7,["JZ128"]],
+    ["JZ442","JZ","",null,4,64,null,97,"","",5,[]],
+    ["JZ255","JZ","",null,4,64,null,97,"","",5,[]],
+    ["JZ177","JZ","",null,4,64,null,97,"","",5,[]],
+    ["H9TQ52ADFTAC","海力士","eMCP",221,3,64,null,86,"","",5,[]],
+    ["KMRC1000BM-B809","三星","eMCP",221,3,64,"221",86,"","",10,["KMRC1000BM","B809"]],
+    ["KMGP6001BM-B514","三星","eMCP",221,3,64,null,86,"","",5,[]],
+    ["H9TQ52ADCMMDARKMM","海力士","eMCP",221,3,64,null,86,"","",5,[]],
+    ["KMGP6001BA-B514","三星","eMCP",221,3,64,null,86,"","",5,[]],
+    ["H9HP52ADAMADARKMM","海力士","eMCP",254,3,64,null,86,"","",5,[]],
+    ["HQ53AD","海力士","uMCP",254,3,64,null,86,"","",5,[]],
+    ["KM5H80018M-B424","三星","uMCP",254,3,64,null,86,"","",6,["KM5H80018M","B424"]],
+    ["H9HP52ADPMMD","海力士","eMCP",254,3,64,null,86,"","",5,[]],
+    ["H9TQ52ADFTMCUR","海力士","eMCP",221,3,64,null,86,"","",5,[]],
+    ["KMDP60018M-B425","三星","eMCP",254,3,64,null,86,"","",5,[]],
+    ["JZ478","JZ","",null,3,64,null,65,"","",5,[]],
+    ["JZ090","JZ","",null,3,64,null,65,"","",5,[]],
+    ["JZ185","JZ","",null,3,64,null,65,"","",5,[]],
+    ["KMRX10014M-B614","三星","eMCP",221,4,32,"221",54,"","",9,["B614"]],
+    ["KMRX60014M-B614","三星","eMCP",221,4,32,null,54,"","",5,[]],
+    ["H9TQ26ACLTMCUR","海力士","eMCP",221,4,32,null,54,"","",5,[]],
+    ["KMRD60014M-B512","三星","",null,4,32,null,54,"","",5,[]],
+    ["H9HP27ACVUMDARKLM","海力士","eMCP",254,4,32,null,54,"","",5,["254#H9HP27ACVUMDARKLM"]],
+    ["KMWX10016M-B619","三星","eMCP",254,4,32,null,54,"","",5,[]],
+    ["X10016A-B617","三星","eMCP",221,4,32,null,54,"","",5,[]],
+    ["KMDX6001DM-B422","三星","eMCP",254,4,32,null,54,"","",5,[]],
+    ["H9HP26ACVUMDARKLM","海力士","eMCP",254,4,32,null,54,"","",5,[]],
+    ["X10016M-B619","三星","eMCP",221,4,32,null,54,"","",5,[]],
+    ["TQ26ACPMMD","海力士","eMCP",221,4,32,null,54,"","",5,[]],
+    ["TQ27AC","海力士","eMCP",221,4,32,null,54,"","",5,[]],
+    ["KMDX60018M-B425","三星","eMCP",254,3,32,null,49,"","",4,["KMDX60018M","B425"]],
+    ["KMDX10018M-B420","三星","eMCP",254,3,32,null,49,"","",4,["KMDX10018M","B420"]],
+    ["KMDD60018M-B320","三星","eMCP",254,3,32,null,49,"","",5,["254#KMDD60018M-B320"]],
+    ["H9HP27ADAMADAR","海力士","eMCP",254,3,32,null,49,"","",5,["254#H9HP27ADAMADAR"]],
+    ["KMR21000BM-B809","三星","eMCP",221,3,32,null,49,"","",5,[]],
+    ["KMRX1000BM-B614","三星","eMCP",221,3,32,"221",49,"","",9,["B614"]],
+    ["KMGX6001BM-B514","三星","eMCP",221,3,32,null,49,"","",5,[]],
+    ["KMGD6001BM-B421","三星","eMCP",221,3,32,null,49,"","",5,[]],
+    ["H9TQ27ADFTMCUR","海力士","eMCP",221,3,32,null,49,"","",5,[]],
+    ["H9TQ26ADFTACUR","海力士","eMCP",221,3,32,null,49,"","",5,[]],
+    ["H9TQ26ADFTBCUR","海力士","eMCP",221,3,32,null,49,"","",5,[]],
+    ["H9TQ26ADFTMCUR","海力士","eMCP",221,3,32,null,49,"","",5,[]],
+    ["KMGX6001BA-B514","三星","eMCP",221,3,32,null,49,"","",5,[]],
+    ["TYR0IH331667RB","通用","",221,3,32,null,32,"","",5,["221#TYR0IH331667RB"]],
+    ["TYR0IH331677RB","通用","",221,3,32,null,32,"","",5,["221#TYR0IH331677RB"]],
+    ["TYR0IH331681RB","通用","",221,3,32,null,32,"","",5,["221#TYR0IH331681RB"]],
+    ["JZ013","JZ","",221,3,32,null,32,"","",5,["221#JZ013"]],
+    ["JZ050","JZ","",221,3,32,null,32,"","",5,["221#JZ050"]],
+    ["JZ004","JZ","",221,3,32,null,32,"","",5,["221#JZ004"]],
+    ["SDADL28P-32G","闪迪","",221,3,32,null,32,"","",5,["221#SDADL28P-32G"]],
+    ["32-24-3FTA28","通用","",221,3,32,null,32,"","",5,["221#32-24-3FTA28"]],
+    ["073-107BT","通用","",221,3,32,null,32,"","",5,["221#073-107BT"]],
+    ["046-125BT","通用","",221,3,32,null,32,"","",5,["221#046-125BT"]],
+    ["H9AG8GDMNB-113","海力士","eMCP",254,3,32,null,32,"","",5,["254#H9AG8GDMNB-113"]],
+    ["JZ018","JZ","",254,3,32,null,32,"","",5,["254#JZ018"]],
+    ["JZ083","JZ","",254,3,32,null,32,"","",5,["254#JZ083"]],
+    ["H9TQ27ADFTMC","海力士","eMCP",221,3,32,null,32,"","",5,[]],
+    ["TYR01H331677RB","通用","",null,3,32,null,32,"","",5,[]],
+    ["SDADL2BP-32G","闪迪","",null,3,32,null,32,"","",5,[]],
+    ["TYR01H331667RB","通用","",null,3,32,null,32,"","",5,[]],
+    ["KMDX1001BM-B420","三星","eMCP",254,3,32,null,49,"","",5,[]],
+    ["HP27ADMAD","海力士","eMCP",254,3,32,null,49,"","",5,[]],
+    ["H9HP27ABUMMDAR","海力士","eMCP",254,2,32,null,27,"","",6,["H9HP27ABUMMDAR","H9HP27","254#H9HP27ABUMMDAR"]],
+    ["KM4X600KM-B321","三星","eMCP",254,2,32,null,27,"","",5,["254#KM4X600KM-B321"]],
+    ["H9HP27ABKMMDAR","海力士","eMCP",254,2,32,null,27,"","",5,["254#H9HP27ABKMMDAR"]],
+    ["KMQ4Z0013M-B809","三星","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMQX10013M-B419","三星","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMQX60013A-B419","三星","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMR4Z0001A-B803","三星","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMR4Z0001A-B802","三星","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMR4Z0001M-B802","三星","eMCP",221,2,32,null,22,"","",5,[]],
+    ["H9TQ26ABJTACUR","海力士","eMCP",221,2,32,null,27,"","",5,[]],
+    ["H9TQ26ABJTBCUR","海力士","eMCP",221,2,32,null,27,"","",5,[]],
+    ["H9TQ26ABJTMCUR","海力士","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMQ210013M-B615","三星","eMCP",221,2,32,null,27,"","",5,[]],
+    ["KMQD60013M-B318","三星","eMCP",221,2,32,null,22,"","",5,[]],
+    ["TYE0IH231658RA","通用","",null,2,32,null,16,"","",5,[]],
+    ["32-16 3GTA28","通用","",null,2,32,null,16,"","",5,[]],
+    ["JZ025","JZ","",null,2,32,null,16,"","",5,[]],
+    ["JZ002","JZ","",null,2,32,null,16,"","",5,[]],
+    ["JZ007","JZ","",null,2,32,null,16,"","",5,[]],
+    ["JZ012","JZ","",null,2,32,null,16,"","",5,[]],
+    ["JZ014","JZ","",null,2,32,null,16,"","",5,[]],
+    ["32-16 4ATB29","通用","",null,2,32,null,16,"","",5,[]],
+    ["KMR31000BA-B614","三星","eMCP",221,3,16,"221",22,"","",9,["B614"]],
+    ["KMR31000BM-B611","三星","eMCP",221,null,16,null,22,"","",5,[]],
+    ["KMRE1000BM-B512","三星","eMCP",221,null,16,null,22,"","",5,[]],
+    ["KMGE6001BM-B421","三星","eMCP",221,null,16,null,22,"","",5,[]],
+    ["H9TQ17ADFTACUR","海力士","eMCP",221,null,16,null,22,"","",5,[]],
+    ["H9TQ17ADFTBCUR","海力士","eMCP",221,null,16,null,22,"","",5,[]],
+    ["H9TQ17ADFTMCUR","海力士","eMCP",221,null,16,null,22,"","",5,[]],
+    ["JZ011","JZ","",null,null,16,null,16,"","",5,[]],
+    ["JZ006","JZ","",null,null,16,null,16,"","",5,[]],
+    ["3100BB-B614","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["H9TQ17ABJTCCUR","海力士","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMQE60013B-B318","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["82001M-B612","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMQ820013M-B419","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMQE10013M-B318","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMQ310013M-B419","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMQE60013M-B318","三星","eMCP",221,2,16,null,16,"","",7,["KMQE60013M","B318"]],
+    ["KMR310001M-B611","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMR820001M-B609","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMR8X0001M-B609","三星","eMCP",221,null,16,null,16,"","",5,["KMR8X0001M_B609"]],
+    ["KMR8X0001A-B609","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMR8X0001M-B608","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["H9TQ17ABJTACUR","海力士","eMCP",221,null,16,null,16,"","",5,[]],
+    ["H9TQ17ABJTBCUR","海力士","eMCP",221,null,16,null,16,"","",5,[]],
+    ["H9TQ17ABJTMCUR","海力士","eMCP",221,null,16,null,16,"","",5,[]],
+    ["H9TQ18ABJTMCUR","海力士","eMCP",221,null,16,null,16,"","",5,[]],
+    ["KMQ310013B-B419","三星","eMCP",221,null,16,null,16,"","",5,[]],
+    ["TYEOHH221657RA","通用","",null,null,16,null,12,"","",5,[]],
+    ["TYEOHH221668RA","通用","",null,null,16,null,12,"","",5,[]],
+    ["TYEOHH231659RA","通用","",null,null,16,null,12,"","",5,[]],
+    ["JY932","通用","",null,null,16,null,12,"","",5,[]],
+    ["JY952","通用","",null,null,16,null,12,"","",5,[]],
+    ["JY008","通用","",null,null,16,null,12,"","",5,[]],
+    ["JY977","通用","",null,null,16,null,12,"","",5,[]],
+    ["JY950","通用","",null,null,16,null,12,"","",5,[]],
+    ["JZ024","JZ","",null,null,16,null,12,"","",5,[]],
+    ["JZ094","JZ","",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-EL3CV100","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-ML3BM500","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-EL3DT527","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-3GM610","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-NL3E527","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["SDADF4AP-16G","闪迪","",null,null,16,null,12,"","",5,[]],
+    ["SDADL2AP-16G","闪迪","",null,null,16,null,12,"","",5,[]],
+    ["037-125BT","通用","",null,null,16,null,12,"","",5,[]],
+    ["16ENCP16-3DTB28","通用","",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-3GTB28","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-3ETD28","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["16EMCP16-3DTA28","通用","eMCP",null,null,16,null,12,"","",5,[]],
+    ["E6006M-B318","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQ310006A-B419","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQ310006B-B419","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["H9TQ17AAETACUR","海力士","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQ310006M-B417","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMF310012M-B305","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMF820012M-B305","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQ82000SM-B418","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQ8X000SA-B414","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMFE10012M-B214","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMFE60012M-B214","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQ31000SM-B417","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["H9TQ17A8GTMCUR","海力士","eMCP",221,1,null,null,11,"","",5,[]],
+    ["TYD0HH231632RC","通用","",null,1,null,null,9,"","",5,[]],
+    ["TYD0HH121662RA","通用","",null,1,null,null,9,"","",5,[]],
+    ["16EMCP08-EL3BT527","通用","eMCP",null,1,null,null,9,"","",5,[]],
+    ["16EMCP08-NL3DT527","通用","eMCP",null,1,null,null,9,"","",5,[]],
+    ["16EMCP08-EL3CV100","通用","eMCP",null,1,null,null,9,"","",5,[]],
+    ["SDADB48K-16G","闪迪","",null,1,null,null,9,"","",5,[]],
+    ["JZ089","JZ","",null,1,null,null,9,"","",5,[]],
+    ["KMQN10013M-B318","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMR7X0001M-B510","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMR7X0001M-B511","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMRNW0001M-B509","三星","eMCP",221,1,null,null,11,"","",5,[]],
+    ["H9TQ64ABJTMCUR","海力士","eMCP",221,1,null,null,11,"","",5,[]],
+    ["KMQN10006B-B318","三星","eMCP",221,1,null,null,10,"","",5,[]],
+    ["KMQN10006M-B318","三星","eMCP",221,1,null,null,10,"","",5,[]],
+    ["H9TQ64AAETAC-KUM","海力士","eMCP",221,1,null,null,10,"","",5,[]],
+    ["H9TQ64AAETMC-KUM","海力士","eMCP",221,1,null,null,10,"","",5,[]],
+    ["KMF720012M-B214","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMQ72000SM-B316","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMFNX0012M-B214","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMFN10012M-B214","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMQN1000SM-B316","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMFN60012M-B214","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMQ7X000SA-B315","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMQNW000SM-B316","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["KMQN6000SM-B316","三星","eMCP",221,1,8,null,10,"","",5,[]],
+    ["H9TQ64A8GTACUR-KUM","海力士","eMCP",221,1,8,null,10,"","",5,[]],
+    ["H9TQ64A8GTCCUR-KUM","海力士","eMCP",221,1,8,null,10,"","",5,[]],
+    ["H9TQ65A8GTACUR-KUM","海力士","eMCP",221,1,8,null,10,"","",5,[]],
+    ["TYD0GH121661RA","通用","",null,1,8,null,8,"","",5,[]],
+    ["TYD0GH121644RA","通用","",null,1,8,null,8,"","",5,[]],
+    ["TYD0GH121651RA","通用","",null,1,8,null,8,"","",5,[]],
+    ["TYD0GH221664RA","通用","",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-NL3DT227","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3DT527","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3DT227","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3BS227","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3BS100","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3BT227","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3AV100","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL2CV100","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL2BV100","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["SD9DS28K-8G","闪迪","",null,1,8,null,8,"","",5,[]],
+    ["28C-8G","通用","",null,1,8,null,8,"","",5,[]],
+    ["JZ099","JZ","",null,1,8,null,8,"","",5,[]],
+    ["JWA60","通用","",null,1,8,null,8,"","",5,[]],
+    ["JW941","通用","",null,1,8,null,8,"","",5,[]],
+    ["044-107BT","通用","",null,1,8,null,8,"","",5,[]],
+    ["036-125BT","通用","",null,1,8,null,8,"","",5,[]],
+    ["08EMCP08-EL3CV100","通用","eMCP",null,1,8,null,8,"","",5,[]],
+    ["KMDH6001DA-B425","三星","eMCP",254,4,64,"D4",null,"","",10,["KMDH6001DA","B425"]],
+    ["KM4X6001KM-B321","三星","eMCP",254,2,32,null,27,"","",4,["KM4X6001KM","B321"]],
+    ["KMDT6000HM-A625","三星","eMCP",144,3,16,null,null,"","",3,["KMDT6000HM","A625"]],
+    ["KM8F8001JA-B813","三星","uMCP",254,8,256,null,null,"","",6,["KM8F8001JA","B813"]],
+    ["KM8F8001LM-B813","三星","uMCP",254,10,256,null,null,"","",5,["KM8F8001LM","B813"]],
+    ["KM8V8001LM-B813","三星","uMCP",254,10,128,null,null,"","",5,["KM8V8001LM","B813"]],
+    ["KM8F9001JM-B813","三星","uMCP",254,8,256,null,null,"","",6,["KM8F9001JM","B813"]],
+    ["KM2F8001CM-B707","三星","uMCP",254,6,256,null,null,"","",5,["KM2F8001CM","B707"]],
+    ["KM2P8001CM-B518","三星","uMCP",254,6,64,null,null,"","",5,["KM2P8001CM","B518"]],
+    ["KM8F8001KM-B820","三星","uMCP",254,8,256,null,null,"","",6,["KM8F8001KM","B820"]],
+    ["KM8F8001MM-B819","三星","uMCP",254,8,256,null,null,"","",6,["KM8F8001MM","B819"]],
+    ["KM8F8001LM-B821","三星","uMCP",254,8,256,null,null,"","",4,["KM8F8001LM","B821"]],
+    ["KM8F8001LM-B822","三星","uMCP",254,8,256,null,null,"","",4,["KM8F8001LM","B822"]],
+    ["KM8F8001MM-B823","三星","uMCP",254,8,256,null,null,"","",4,["KM8F8001MM","B823"]],
+    ["KM8F9001KM-B835","三星","uMCP",254,8,256,null,null,"","",4,["KM8F9001KM","B835"]],
+    ["KM8F9001MM-B833","三星","uMCP",254,8,256,null,null,"","",4,["KM8F9001MM","B833"]],
+    ["KM8F9001LM-B832","三星","uMCP",254,8,256,null,null,"","",4,["KM8F9001LM","B832"]],
+    ["KMAS8001RM-BC06","三星","uMCP",254,8,256,null,null,"","",5,["KMAS8001RM","BC06"]],
+    ["KMAS9001UM-BC07","三星","uMCP",254,8,256,null,null,"","",5,["KMAS9001UM","BC07"]],
+    ["KMAS9001SM-BC05","三星","uMCP",254,8,256,null,null,"","",5,["KMAS9001SM","BC05"]],
+    ["KMAS9001VM-BC08","三星","uMCP",254,8,256,null,null,"","",5,["KMAS9001VM","BC08"]],
+    ["KMJIB001VM-BC17","三星","uMCP",254,12,256,null,null,"","",6,["KMJIB001VM","BC17"]],
+    ["KMJIB001SM-BC11","三星","uMCP",254,12,256,null,null,"","",5,["KMJIB001SM","BC11"]],
+    ["KMJIB001TM-BC13","三星","uMCP",254,12,256,null,null,"","",5,["KMJIB001TM","BC13"]],
+    ["KMJIA001TM-BC10","三星","uMCP",254,12,256,null,null,"","",5,["KMJIA001TM","BC10"]],
+    ["KMJIA001UM-BC12","三星","uMCP",254,12,256,null,null,"","",5,["KMJIA001UM","BC12"]],
+    ["KMJS9001UM-BG05","三星","uMCP",297,12,256,null,null,"","",5,["KMJS9001UM","BG05"]],
+    ["KMJS9001VM-BG06","三星","uMCP",297,12,256,null,null,"","",5,["KMJS9001VM","BG06"]],
+    ["KMJS8001SM-BG05","三星","uMCP",297,8,256,null,null,"","",5,["KMJS8001SM","BG05"]],
+    ["KMJS8001TM-BG06","三星","uMCP",297,8,256,null,null,"","",5,["KMJS8001TM","BG06"]],
+    ["KMJS8001UM-BG07","三星","uMCP",297,8,256,null,null,"","",5,["KMJS8001UM","BG07"]],
+    ["H9TQ17ABJTCC","海力士","eMCP",221,2,16,null,16,"","",7,["H9TQ17","ABJTCC"]],
+    ["H9TQ26AD","海力士","eMCP",221,3,32,"221",49,"","",9,["H9TQ26AD"]],
+    ["H9TQ26AC","海力士","eMCP",221,4,32,"221",54,"","",9,["H9TQ26AC"]],
+    ["H9HP52AECMMD","海力士","eMCP",254,6,64,"EMCP",135,"","",9,["H9HP52AEC"]],
+    ["H9HP16AC","海力士","eMCP",254,4,128,"ECMP",151,"","",8,["H9HP16AC"]],
+    ["H9HP16AEC","海力士","eMCP",254,6,128,null,173,"","",6,["H9HP16AEC"]],
+    ["H9HQ53AECMMD","海力士","uMCP",254,6,64,"UMCP",108,"","",10,["H9HQ53AEC"]],
+    ["H9HQ16AC","海力士","uMCP",254,4,128,"UMCP",151,"","",9,["H9HQ16AC"]],
+    ["H9HQ16AEC","海力士","uMCP",254,6,128,"UMCP",173,"","",9,["H9HQ16AEC"]],
+    ["H9HQ52ACP","海力士","uMCP",254,4,64,"D3",140,"","",8,["H9HQ52ACP"]],
+    ["H9HQ21AFAMAD","海力士","uMCP",254,8,256,null,null,"","",6,["H9HQ21","AFAMAD"]],
+    ["H9HQ22AFAMAD","海力士","uMCP",254,8,256,null,null,"","",5,["H9HQ22","AFAMAD"]],
+    ["H9HQ15ACPMBDAR","海力士","uMCP",254,4,128,null,151,"","",4,["H9HQ15ACPM"]],
+    ["H9HQ21AFAMZDAR","海力士","uMCP",254,8,256,null,221,"","",4,["H9HQ21","AFAMZDAR"]],
+    ["H9HQ22AFAMZDAR","海力士","uMCP",254,8,256,null,null,"","",4,["H9HQ22","AFAMZDAR"]],
+    ["H9QG9GECN6X203N","海力士","uMCP",254,6,64,null,null,"","",4,["H9QG9GECN6"]],
+    ["H9QG9GEAN6X155N","海力士","uMCP",254,6,64,null,null,"","",4,["H9QG9GEAN6"]],
+    ["H9QT0GEEN6X202N","海力士","uMCP",254,6,128,null,null,"","",4,["H9QT0GEEN6"]],
+    ["H9QT0G6CN6X146R","海力士","uMCP",254,8,128,null,173,"","",4,["H9QT0G6CN6"]],
+    ["H9QT1GGA06","海力士","uMCP",254,12,256,null,null,"","",5,["H9QT1GGA06"]],
+    ["H9QT1GGBP6","海力士","uMCP",254,12,256,null,null,"","",5,["H9QT1GGBP6"]],
+    ["H9QT1GGBM6","海力士","uMCP",254,12,256,null,null,"","",5,["H9QT1GGBM6"]],
+    ["H9QT1GGAO6","海力士","uMCP",254,12,256,null,null,"","",5,["H9QT1GGAO6"]],
+    ["H9RT1GGA06","海力士","uMCP",297,12,256,null,null,"","",6,["H9RT1GGA06"]],
+    ["H9RT1GGA85","海力士","uMCP",297,12,256,null,null,"","",5,["H9RT1GGA85"]],
+    ["H9RT1GGA16","海力士","uMCP",297,12,256,null,null,"","",5,["H9RT1GGA16"]],
+    ["H9RT1G6AS5X037R","海力士","uMCP",297,6,256,null,221,"","",5,["H9RT1G6AS5"]],
+    ["H9RT0GEA65X030R","海力士","uMCP",297,6,128,null,null,"","",4,["H9RT0GEA65"]],
+    ["H9RT2G7M75X068R","海力士","uMCP",297,16,512,null,null,"","",4,["H9RT2G7M75"]],
+    ["H9RT2GGA65X031R","海力士","uMCP",297,12,512,null,194,"","",4,["H9RT2GGA65"]],
+    ["H9RT2G6AS5X038N","海力士","uMCP",297,8,512,null,null,"","",4,["H9RT2G6AS5"]],
+    ["MT29VZZZAD8DKKBT","美光","eMCP",254,4,64,null,null,"","",5,["MT29VZZZAD8DKKBT"]],
+    ["MT29VZZZBD9FQKPR","美光","uMCP",254,6,128,null,null,"","",4,["MT29VZZZBD9FQKPR"]],
+    ["MT29VZZZ7D81SFSL-046","美光","uMCP",254,8,64,null,null,"","",4,["MT29VZZZ7D81"]],
+    ["MT29VZZZCD91SFSM-046","美光","uMCP",254,null,128,null,null,"","",3,["MT29VZZZCD91"]],
+    ["MT29VZZZCDA1SKPR-046","美光","uMCP",254,8,256,null,null,"","",5,["JZ396","MT29VZZZCDA1SKPR","W.181"]],
+    ["KLM8G1GETF-B041","三星","eMMC",153,null,8,null,null,"","",6,["KLM8G1GETF"]],
+    ["KLM8G1GEME-B041","三星","eMMC",153,null,8,null,null,"","",5,["KLM8G1GEME"]],
+    ["KLMAG2WEPD-B031","三星","eMMC",153,null,32,null,null,"","",4,["KLMAG2WEPD"]],
+    ["KLMEG8UCTA-B045","三星","eMMC",153,null,256,null,null,"","",4,["KLMEG8UCTA"]],
+    ["KLUCG4J1EA-B0C1","三星","UFS",153,null,64,null,null,"","",6,["KLUCG4J1EA"]],
+    ["KLUCG4J1CB-B0B1","三星","UFS",153,null,64,null,null,"","",4,["KLUCG4J1CB"]],
+    ["KLUFG8RHUF-F0HQ","三星","UFS",153,null,512,null,null,"","",3,["KLUFG8RHUF"]],
+    ["KLUGG8NHHB-F0G1","三星","UFS",153,null,1024,null,null,"","",3,["KLUGG8NHHB"]],
+    ["THGBMNG5D1LBAIL","铠侠","eMMC",153,null,4,null,null,"","",5,["THGBMNG5D1LBAIL"]],
+    ["THGBMJG7C1LBAIL","铠侠","eMMC",153,null,16,null,null,"","",4,["THGBMJG7C1LBAIL"]],
+    ["SDINBDG4-16G","闪迪","eMMC",153,null,16,null,null,"","",4,["SDINBDG4-16G"]],
+    ["SDINDDH4-64G","闪迪","eMMC",153,null,64,null,null,"","",3,["SDINDDH4-64G"]],
+    ["H26M52208FPR","海力士","eMMC",153,null,16,null,null,"","",4,["H26M52208FPR"]],
+    ["H26M52002EQT","海力士","eMMC",153,null,256,null,null,"","",4,["H26M52002EQT"]],
+    ["H26M62002JPR","海力士","eMMC",153,null,32,null,null,"","",5,["H26M62002"]],
+    ["H28U64222MMR","海力士","UFS",153,null,32,null,null,"","",4,["H28U64222MMR"]],
+    ["JZ305","JZ","uMCP",254,8,256,null,null,"","",4,["JZ305"]],
+    ["JZ306","JZ","uMCP",254,8,256,null,null,"","",4,["JZ306"]],
+    ["JZ307","JZ","uMCP",254,8,256,null,null,"","",4,["JZ307"]],
+    ["JZ524","JZ","uMCP",254,12,256,null,null,"","",4,["JZ524"]],
+    ["JZ525","JZ","uMCP",254,12,256,null,null,"","",4,["JZ525"]],
+    ["JZ242","JZ","UFS",153,null,256,null,null,"","",3,["JZ242"]],
+    ["K3LK4K40CM-BGCP","三星","LPDDR5",496,12,null,"496",null,"","",6,["K3LK4K40CM"]],
+    ["K3LK3K30EM-BGCN","三星","LPDDR5",496,8,null,"496",null,"","",5,["K3LK3K30EM"]],
+    ["H58GG6MK6GX037","海力士","LPDDR5",496,12,null,"496",null,"","",5,["H58GG6MK6GX037"]],
+    ["H9JKNNNFB3AECR-N6H","海力士","LPDDR5",496,8,null,"496",null,"","",4,["H9JKNNNFB3AECR"]],
+  ];
+
+  const LS_KEY = "chipQuickScan.sell.v1";
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  function prep(m, id){
+    const aliases = (m.aliases || []).filter(Boolean);
+    const runs = [];
+    [m.model].concat(aliases).forEach(s => {
+      const found = String(s).match(/\d+/g) || [];
+      runs.push(...found);
+    });
+    m.id = m.id || id;
+    m.aliases = aliases;
+    m._runs = Array.from(new Set(runs));
+    m._norm = (m.model + " " + aliases.join(" ")).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    m._config = m.config || (m.ram && m.rom ? m.ram + "+" + m.rom : m.rom ? "字库" + m.rom + "GB" : m.ram ? "运存" + m.ram + "GB" : "—");
+    m._caps = [];
+    if (m.ram) m._caps.push(String(m.ram));
+    if (m.rom) m._caps.push(String(m.rom));
+    if (m.ram && m.rom) m._caps.push(m.ram + "+" + m.rom, m.rom + "+" + m.ram);
+    m._caps = Array.from(new Set(m._caps));
+    m._capsNorm = m._caps.map(x => x.replace(/\D/g, ""));
+    return m;
+  }
+
+  const BUILTIN = RAW.map((r, i) => prep({
+    model: r[0], brand: r[1], family: r[2], balls: r[3], ram: r[4], rom: r[5],
+    bucket: r[6], price: r[7], note: r[8], conf: r[9], rank: r[10], aliases: r[11] || []
+  }, "m" + i));
+
+  let state = loadState();
+  let ALL = [];
+  let activeTab = "scan";
+  let filterBrand = "全部";
+  let filterFamily = "全部";
+  let modelSearch = "";
+
+  function loadState(){
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        return {
+          batch: s.batch || "批次1",
+          records: Array.isArray(s.records) ? s.records : [],
+          customModels: Array.isArray(s.customModels) ? s.customModels : []
+        };
+      }
+    } catch(e) {}
+    return {batch:"批次1", records:[], customModels:[]};
+  }
+
+  function storageAvailable(){
+    try { localStorage.setItem("__test__", "1"); localStorage.removeItem("__test__"); return true; } catch(e) { return false; }
+  }
+
+  function rebuild(){
+    const customs = state.customModels.map((m, i) => prep(Object.assign({}, m), "c" + i));
+    ALL = BUILTIN.concat(customs);
+  }
+
+  function save(){
+    try {
+      const data = {
+        batch: state.batch,
+        records: state.records,
+        customModels: state.customModels.map(m => ({
+          model:m.model, brand:m.brand, family:m.family, balls:m.balls,
+          ram:m.ram, rom:m.rom, bucket:m.bucket, price:m.price,
+          note:m.note, conf:m.conf, rank:m.rank, aliases:m.aliases || []
+        }))
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    } catch(e) {
+      $("#storageWarn").classList.add("on");
+    }
+  }
+
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function cfg(m){ return m._config; }
+
+  function partHit(m, pd){
+    let hit = 0;
+    for (const r of m._runs) {
+      if (r === pd) hit = Math.max(hit, 120);
+      else if (r.startsWith(pd)) hit = Math.max(hit, 85);
+      else if (r.endsWith(pd)) hit = Math.max(hit, 55);
+    }
+    for (const c of m._capsNorm) {
+      if (c === pd) hit = Math.max(hit, 75);
+      else if (c.startsWith(pd)) hit = Math.max(hit, 45);
+      else if (c.includes(pd)) hit = Math.max(hit, 35);
+    }
+    return hit;
+  }
+
+  function score(m, query){
+    if (!query) return m.rank * 10 + (m.price != null ? 4 : 0);
+    const q = query.trim();
+    const hasLetters = /[A-Za-z]/.test(q);
+    const qNorm = q.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const parts = q.split(/\s+/).filter(Boolean);
+    let s = 0;
+
+    if (parts.length === 2) {
+      const a = parts[0].replace(/\D/g, "");
+      const b = parts[1].replace(/\D/g, "");
+      if (a && b) {
+        const an = Number(a), bn = Number(b);
+        const ha = partHit(m, a), hb = partHit(m, b);
+        if (!ha || !hb) return -1;
+        const configHit = (m.ram === an && m.rom === bn) || (m.ram === bn && m.rom === an);
+        return (configHit ? 300 : 100) + ha + hb;
+      }
+    }
+
+    if (parts.length > 1) {
+      for (const p of parts) {
+        const pd = p.replace(/\D/g, "");
+        if (pd) {
+          let hit = 0;
+          for (const r of m._runs) {
+            if (r === pd) hit = Math.max(hit, 120);
+            else if (r.startsWith(pd)) hit = Math.max(hit, 85);
+            else if (r.endsWith(pd)) hit = Math.max(hit, 55);
+          }
+          let cap = 0;
+          for (const c of m._capsNorm) {
+            if (c === pd) cap = Math.max(cap, 75);
+            else if (c.startsWith(pd)) cap = Math.max(cap, 45);
+            else if (c.includes(pd)) cap = Math.max(cap, 35);
+          }
+          if (!hit && !cap) return -1;
+          s += Math.max(hit, cap) + (cap && !hit ? 15 : 0);
+        } else {
+          const pn = p.toUpperCase().replace(/[^A-Z0-9]/g, "");
+          if (!pn || !m._norm.includes(pn)) return -1;
+          s += 60;
+        }
+      }
+      return s + 80;
+    }
+
+    if (hasLetters) {
+      if (m._norm.startsWith(qNorm)) s += 140;
+      else if (m._norm.includes(qNorm)) s += 90;
+      else {
+        let aliasHit = false;
+        for (const a of m.aliases) {
+          const an = String(a).toUpperCase().replace(/[^A-Z0-9]/g, "");
+          if (an.includes(qNorm)) { aliasHit = true; break; }
+        }
+        if (!aliasHit) return -1;
+        s += 50;
+      }
+    } else {
+      const qd = q.replace(/\D/g, "");
+      if (!qd) return -1;
+      let hit = 0;
+      for (const r of m._runs) {
+        if (r === qd) hit = Math.max(hit, 120);
+        else if (r.startsWith(qd)) hit = Math.max(hit, 85);
+        else if (r.endsWith(qd)) hit = Math.max(hit, 55);
+      }
+      let cap = 0;
+      for (const c of m._capsNorm) {
+        if (c === qd) cap = 75;
+      }
+      if (!hit && !cap) return -1;
+      s += Math.max(hit, cap);
+      if (cap && !hit) s += 12;
+      s += Math.min(qd.length, 6) * 2;
+    }
+
+    return s;
+  }
+
+  function search(query, brand, family, limit){
+    const q = (query || "").trim();
+    const out = [];
+    for (const m of ALL) {
+      if (brand !== "全部" && m.brand !== brand) continue;
+      if (family !== "全部" && m.family !== family) continue;
+      const sc = score(m, q);
+      if (sc < 0) continue;
+      out.push({m, sc});
+    }
+    out.sort((a,b) => b.sc - a.sc || b.m.rank - a.m.rank || (b.m.price != null) - (a.m.price != null) || a.m.model.localeCompare(b.m.model));
+    return limit ? out.slice(0, limit) : out;
+  }
+
+  function highlight(model, query){
+    const q = (query || "").trim();
+    if (!q) return esc(model);
+    const qd = q.replace(/\D/g, "");
+    if (/[A-Za-z]/.test(q)) {
+      const qn = q.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (!qn) return esc(model);
+      const idx = model.toUpperCase().indexOf(qn);
+      if (idx >= 0) {
+        return esc(model.slice(0, idx)) + "<mark>" + esc(model.slice(idx, idx + qn.length)) + "</mark>" + esc(model.slice(idx + qn.length));
+      }
+      return esc(model);
+    }
+    if (!qd) return esc(model);
+    const re = new RegExp("(" + qd.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "g");
+    return esc(model).replace(re, "<mark>$1</mark>");
+  }
+
+  function renderFilters(){
+    const brands = ["全部","三星","海力士","美光","铠侠","闪迪","JZ","通用"];
+    const families = ["全部","eMCP","uMCP","eMMC","UFS","LPDDR5"];
+    const count = (b) => ALL.filter(m => b === "全部" || m.brand === b).length;
+    const countF = (f) => ALL.filter(m => f === "全部" || m.family === f).length;
+    $("#brandChips").innerHTML = brands.map(b =>
+      `<button class="chip ${filterBrand===b?"on":""}" data-brand="${esc(b)}">${esc(b)}<span class="cnt">${count(b)}</span></button>`
+    ).join("");
+    $("#familyChips").innerHTML = families.map(f =>
+      `<button class="chip ${filterFamily===f?"on":""}" data-family="${esc(f)}">${esc(f)}<span class="cnt">${countF(f)}</span></button>`
+    ).join("");
+  }
+
+  function renderCandidates(){
+    const q = $("#query").value;
+    const results = search(q, filterBrand, filterFamily, 8);
+    const hint = $("#hint");
+    if (!q.trim()) {
+      hint.innerHTML = "常用型号先列出来；输入数字后实时缩小。例：<b>614</b> / <b>1000 809</b> / <b>813</b>";
+    } else if (results.length === 0) {
+      hint.innerHTML = "没匹配到。少输一位、换品牌筛选，或点下面“未知 / 待补”。";
+    } else if (q.replace(/\D/g,"").length <= 2) {
+      hint.innerHTML = `匹配 <b>${results.length}</b> 个；再输一位，或加前缀字母更快（如 H9HQ53）。`;
+    } else {
+      hint.innerHTML = `匹配 <b>${results.length}</b> 个；列表可上滑，点候选直接入库。`;
+    }
+    if (!results.length) {
+      $("#candidates").innerHTML = `<div class="empty"><b>没有候选</b><br>试试：少输一位 / 换品牌 / 点“字母键盘”输完整型号</div>`;
+      return;
+    }
+    $("#candidates").innerHTML = results.map(({m}, i) => {
+      const price = m.price != null ? `¥${m.price}` : "询价";
+      const priceCls = m.price != null ? "price" : "price na";
+      const bucket = m.bucket ? `<span class="badge bucket">${esc(m.bucket)}</span>` : "";
+      const balls = m.balls ? `<span>${m.balls}球</span>` : "";
+      return `<button class="cand ${i===0?"first":""}" data-id="${m.id}" data-fam="${esc(m.family)}">
+        <span class="cand-top"><span class="model">${highlight(m.model, q)}</span><span class="${priceCls}">${price}</span></span>
+        <span class="meta"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${balls}<span>${esc(cfg(m))}</span>${bucket}</span>
+        ${(m.note || (m.aliases && m.aliases.length)) ? `<span class="cand-note">${esc(m.note || "")}${m.aliases && m.aliases.length ? (m.note ? " · 别名 " : "别名 ") + esc(m.aliases.join(" / ")) : ""}</span>` : ""}
+      </button>`;
+    }).join("");
+  }
+
+  function selectModel(m){
+    if (!m) return;
+    const rec = {
+      id: "r" + Date.now() + Math.random().toString(36).slice(2, 6),
+      ts: Date.now(),
+      batch: state.batch,
+      modelId: m.id,
+      model: m.model,
+      brand: m.brand,
+      family: m.family,
+      balls: m.balls,
+      config: cfg(m),
+      bucket: m.bucket,
+      priceRef: m.price,
+      priceActual: m.price,
+      note: m.note || "",
+      conf: m.conf
+    };
+    state.records.push(rec);
+    save();
+    $("#query").value = "";
+    renderCandidates();
+    renderRecords();
+    renderStats();
+    toast(`已录入 ${m.model} · ${cfg(m)}${m.bucket ? " · " + m.bucket : ""} · ${m.price != null ? "¥" + m.price : "询价"}`);
+  }
+
+  function renderRecords(){
+    const recs = state.records;
+    const total = recs.length;
+    const value = recs.reduce((s, r) => s + (Number(r.priceActual != null ? r.priceActual : r.priceRef) || 0), 0);
+    const pending = recs.filter(r => r.model !== "未知" && r.config === "—").length;
+    const unknown = recs.filter(r => r.model === "未知").length;
+    $("#recordSummary").innerHTML = `
+      <div class="stat"><div class="n">${total}</div><div class="l">已录入</div></div>
+      <div class="stat hot"><div class="n">¥${value.toFixed(0)}</div><div class="l">合计</div></div>
+      <div class="stat"><div class="n">${pending}</div><div class="l">待补信息</div></div>
+      <div class="stat warn"><div class="n">${unknown}</div><div class="l">未知</div></div>`;
+    $("#scanCount").textContent = total + " 块";
+    if (!recs.length) {
+      $("#recordList").innerHTML = `<div class="empty"><b>还没有记录</b><br>在“录入”页输数字，点候选；每点一次记一块。</div>`;
+      return;
+    }
+    const rows = recs.slice().reverse().slice(0, 80).map(r => {
+      const price = r.priceActual != null ? r.priceActual : "";
+      return `<div class="rec" data-id="${r.id}">
+        <div class="rec-top"><span class="rec-model">${esc(r.model)}</span><span class="rec-time">${new Date(r.ts).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})}</span></div>
+        <div class="rec-meta"><span class="badge fam">${esc(r.family || "-")}</span><span>${esc(r.config || "—")}</span>${r.bucket ? `<span class="badge bucket">${esc(r.bucket)}</span>` : ""}<span>${esc(r.batch || "")}</span></div>
+        <div class="rec-actions"><span style="font-size:11px;color:#7b858c">实收 ¥</span><input class="actual-price" type="number" inputmode="decimal" value="${price}" placeholder="0"><button class="del">删除</button></div>
+        ${r.note ? `<div class="rec-note">${esc(r.note)}</div>` : ""}
+      </div>`;
+    }).join("");
+    $("#recordList").innerHTML = rows;
+  }
+
+  function renderStats(){
+    const recs = state.records;
+    if (!recs.length) { $("#statBox").innerHTML = ""; return; }
+    const byBucket = {}, byFamily = {}, byModel = {};
+    for (const r of recs) {
+      const b = r.bucket || "未定";
+      byBucket[b] = byBucket[b] || {n:0, v:0};
+      byBucket[b].n++;
+      byBucket[b].v += Number(r.priceActual != null ? r.priceActual : r.priceRef) || 0;
+      const f = r.family || "未定";
+      byFamily[f] = (byFamily[f] || 0) + 1;
+      byModel[r.model] = (byModel[r.model] || 0) + 1;
+    }
+    const bucketEntries = Object.entries(byBucket).sort((a,b) => b[1].n - a[1].n);
+    const maxB = Math.max(...bucketEntries.map(x => x[1].n), 1);
+    const familyEntries = Object.entries(byFamily).sort((a,b) => b[1] - a[1]);
+    const maxF = Math.max(...familyEntries.map(x => x[1]), 1);
+    const top = Object.entries(byModel).sort((a,b) => b[1] - a[1]).slice(0, 6);
+    $("#statBox").innerHTML = `
+      <div class="stat-box">
+        <h3 style="margin-top:0">按报价桶</h3>
+        ${bucketEntries.map(([k, v]) => `<div class="bar-row"><span>${esc(k)}</span><span class="bar"><i style="width:${(v.n/maxB*100).toFixed(1)}%"></i></span><span class="v">${v.n}块 ¥${v.v.toFixed(0)}</span></div>`).join("")}
+      </div>
+      <div class="stat-box">
+        <h3 style="margin-top:0">按封装家族</h3>
+        ${familyEntries.map(([k, v]) => `<div class="bar-row"><span>${esc(k)}</span><span class="bar"><i style="width:${(v/maxF*100).toFixed(1)}%"></i></span><span class="v">${v}块</span></div>`).join("")}
+      </div>
+      <div class="stat-box">
+        <h3 style="margin-top:0">录得最多的型号</h3>
+        ${top.map(([k, v]) => `<div class="bar-row"><span style="font-family:var(--mono);font-size:10.5px;overflow:hidden;text-overflow:ellipsis">${esc(k)}</span><span class="bar"><i style="width:${(v/Math.max(...top.map(x=>x[1]),1)*100).toFixed(1)}%"></i></span><span class="v">${v}块</span></div>`).join("")}
+      </div>`;
+  }
+
+  function renderModels(){
+    $("#modelCount").textContent = `型号库 ${ALL.length} 条`;
+    const q = modelSearch.trim();
+    const results = q ? search(q, "全部", "全部", 60) : ALL.slice().sort((a,b) => b.rank - a.rank || a.model.localeCompare(b.model)).slice(0, 60).map(m => ({m, sc: 0}));
+    if (!results.length) {
+      $("#modelList").innerHTML = `<div class="empty">没有匹配的型号。</div>`;
+      return;
+    }
+    $("#modelList").innerHTML = results.map(({m}) => `<div class="model-row">
+      <div class="m"><b>${esc(m.model)}</b></div>
+      <div class="d"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${m.balls ? `<span>${m.balls}球</span>` : ""}<span>${esc(cfg(m))}</span>${m.bucket ? `<span class="badge bucket">${esc(m.bucket)}</span>` : ""}${m.price != null ? `<span>¥${m.price}</span>` : ""}${m.custom ? `<button class="del" data-del="${esc(m.id)}">删除</button>` : ""}</div>
+      ${m.note ? `<div class="d">${esc(m.note)}</div>` : ""}
+    </div>`).join("");
+    if (!q && ALL.length > 60) $("#modelList").innerHTML += `<div class="more">只显示前 60 条；上面搜索可查全库。</div>`;
+  }
+
+  function toast(msg){
+    const el = $("#toast");
+    el.textContent = msg;
+    el.classList.add("on");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove("on"), 1800);
+  }
+
+  function setTab(name){
+    activeTab = name;
+    $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.tab === name));
+    $$(".view").forEach(v => v.classList.remove("on"));
+    const view = $("#view-" + name);
+    if (view) view.classList.add("on");
+    if (name === "records") { renderRecords(); renderStats(); }
+    if (name === "models") renderModels();
+  }
+
+  function appendKey(k){
+    const q = $("#query");
+    if (k === "back") q.value = q.value.slice(0, -1);
+    else if (k === "clear") q.value = "";
+    else if (k === "space") { if (!q.value.endsWith(" ")) q.value += " "; }
+    else if (k === "letters") { q.inputMode = "text"; q.focus(); return; }
+    else q.value += k;
+    renderCandidates();
+  }
+
+  function addUnknown(){
+    const note = window.prompt("未知/待补：写一句备注（可空），例如“型号磨掉，待拍”", "");
+    if (note === null) return;
+    state.records.push({
+      id: "r" + Date.now() + Math.random().toString(36).slice(2, 6),
+      ts: Date.now(), batch: state.batch,
+      modelId: "", model: "未知", brand: "", family: "", balls: null,
+      config: "—", bucket: null, priceRef: null, priceActual: null,
+      note: note || "待补", conf: "未知"
+    });
+    save(); renderRecords(); renderStats();
+    toast("已加入未知队列；记得补拍/补型号");
+  }
+
+  function undoLast(){
+    if (!state.records.length) { toast("没有可撤销的记录"); return; }
+    const r = state.records.pop();
+    save(); renderRecords(); renderStats();
+    toast("已撤销 " + r.model);
+  }
+
+  function download(text, name, type){
+    const blob = new Blob([text], {type: type || "text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  }
+
+  function stamp(){
+    const d = new Date();
+    const p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  function csvCell(v){
+    const s = v == null ? "" : String(v);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function buildCSV(){
+    const header = ["时间","批次","型号","品牌","家族","球数","配置","报价桶","参考价","成交价","备注"];
+    const rows = state.records.map(r => [
+      new Date(r.ts).toLocaleString("zh-CN"),
+      r.batch, r.model, r.brand, r.family, r.balls == null ? "" : r.balls,
+      r.config, r.bucket || "", r.priceRef == null ? "" : r.priceRef,
+      r.priceActual == null ? "" : r.priceActual, r.note || ""
+    ]);
+    return "\ufeff" + [header].concat(rows).map(row => row.map(csvCell).join(",")).join("\r\n");
+  }
+
+  function backup(){
+    const data = {
+      app: "芯片型号快查", version: 1, exportedAt: new Date().toISOString(),
+      batch: state.batch, records: state.records, customModels: state.customModels
+    };
+    download(JSON.stringify(data, null, 2), "芯片数据备份_" + stamp() + ".json", "application/json");
+  }
+
+  function restore(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data || typeof data !== "object") throw new Error("格式不对");
+        if (Array.isArray(data.records)) {
+          const ids = new Set(state.records.map(r => r.id));
+          data.records.forEach(r => { if (r && r.id && !ids.has(r.id)) state.records.push(r); });
+        }
+        if (Array.isArray(data.customModels)) {
+          const names = new Set(state.customModels.map(m => String(m.model).toUpperCase()));
+          data.customModels.forEach(m => { if (m && m.model && !names.has(String(m.model).toUpperCase())) state.customModels.push(m); });
+        }
+        rebuild(); save(); renderAll();
+        toast("恢复完成：记录 " + state.records.length + " 条");
+      } catch(e) {
+        toast("恢复失败：不是有效的备份 JSON");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function renderAll(){
+    $("#batch").value = state.batch;
+    renderFilters();
+    renderCandidates();
+    renderRecords();
+    renderStats();
+    renderModels();
+  }
+
+  // events
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.classList && t.classList.contains("tab")) setTab(t.dataset.tab);
+    if (t.classList && t.classList.contains("chip")) {
+      if (t.dataset.brand != null) filterBrand = t.dataset.brand;
+      if (t.dataset.family != null) filterFamily = t.dataset.family;
+      renderFilters(); renderCandidates();
+    }
+    const cand = t.closest && t.closest(".cand");
+    if (cand) {
+      const m = ALL.find(x => x.id === cand.dataset.id);
+      if (m) selectModel(m);
+    }
+    const key = t.closest && t.closest("[data-key]");
+    if (key) appendKey(key.dataset.key);
+    if (t.id === "clearQuery") { $("#query").value = ""; renderCandidates(); $("#query").focus(); }
+    if (t.id === "unknownBtn") addUnknown();
+    if (t.id === "undoBtn") undoLast();
+    if (t.id === "exportCsv") download(buildCSV(), "芯片录入_" + stamp() + ".csv", "text/csv;charset=utf-8");
+    if (t.id === "backupJson") backup();
+    if (t.id === "clearRecords") {
+      if (!state.records.length) return;
+      if (window.confirm("清空全部 " + state.records.length + " 条记录？建议先导出 CSV。")) {
+        state.records = []; save(); renderRecords(); renderStats(); toast("记录已清空");
+      }
+    }
+    const del = t.closest && t.closest("[data-del]");
+    if (del) {
+      const id = del.dataset.del;
+      const m = state.customModels.find(x => x.id === id);
+      if (m && window.confirm("删除自建型号 " + m.model + "？")) {
+        state.customModels = state.customModels.filter(x => x.id !== id);
+        rebuild(); save(); renderModels(); renderFilters();
+        toast("已删除 " + m.model);
+      }
+    }
+  });
+
+  $("#query").addEventListener("input", renderCandidates);
+  $("#query").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const first = $("#candidates .cand");
+      if (first) first.click();
+    }
+  });
+
+  $("#batch").addEventListener("change", () => { state.batch = $("#batch").value.trim() || "批次1"; save(); });
+  $("#modelQuery").addEventListener("input", () => { modelSearch = $("#modelQuery").value; renderModels(); });
+  $("#restoreFile").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) restore(f); e.target.value = ""; });
+
+  document.addEventListener("click", (e) => {
+    const rec = e.target.closest && e.target.closest(".rec");
+    if (!rec) return;
+    if (e.target.classList.contains("del")) {
+      const id = rec.dataset.id;
+      state.records = state.records.filter(r => r.id !== id);
+      save(); renderRecords(); renderStats(); toast("已删除一条");
+    }
+  });
+  document.addEventListener("change", (e) => {
+    if (!e.target.classList.contains("actual-price")) return;
+    const rec = e.target.closest(".rec");
+    if (!rec) return;
+    const r = state.records.find(x => x.id === rec.dataset.id);
+    if (!r) return;
+    const v = e.target.value.trim();
+    r.priceActual = v === "" ? null : Number(v);
+    save(); renderRecords(); renderStats();
+  });
+
+  $("#addForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const model = f.model.value.trim().toUpperCase();
+    if (!model) return;
+    if (ALL.some(m => String(m.model).toUpperCase() === model)) { toast("型号已存在：" + model); return; }
+    const num = v => v === "" ? null : Number(v);
+    const aliases = f.aliases.value.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+    const m = {
+      model: model,
+      brand: f.brand.value,
+      family: f.family.value,
+      balls: num(f.balls.value),
+      ram: num(f.ram.value),
+      rom: num(f.rom.value),
+      bucket: f.bucket.value.trim() || null,
+      price: num(f.price.value),
+      note: f.note.value.trim(),
+      conf: "自建",
+      rank: 6,
+      aliases: aliases,
+      custom: true
+    };
+    m.id = "c" + Date.now();
+    state.customModels.push(m);
+    rebuild(); save();
+    f.reset();
+    renderFilters(); renderModels(); renderCandidates();
+    toast("已加入型号库：" + model);
+  });
+
+  rebuild();
+  renderAll();
+  $("#today").textContent = new Date().toLocaleDateString("zh-CN");
+  if (!storageAvailable()) $("#storageWarn").classList.add("on");
+
+  // expose for testing in console
+  window.__chipApp = {state, ALL, search, buildCSV, selectModel, setTab, rebuild};
+})();
+</script>
+</body>
+</html>
