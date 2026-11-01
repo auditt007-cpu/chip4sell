@@ -145,6 +145,7 @@
   .model-row .d{font-size:10.5px;color:#7b858c;margin-top:2px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
   .model-row .del{border:1px solid #e6c8c2;background:#fff;color:var(--danger);border-radius:6px;font-size:10px;padding:1px 5px}
   .more{text-align:center;font-size:11.5px;color:var(--muted);padding:10px}
+  .loadmore{display:block;width:100%;margin:8px 0;padding:9px;border:1px dashed var(--line);background:#fff;border-radius:10px;font-size:12.5px;color:var(--amber-deep);font-weight:650;font-family:var(--sans);cursor:pointer}
 
   #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);max-width:90vw;background:var(--navy);color:#fff;border-radius:11px;padding:10px 14px;font-size:12.5px;box-shadow:0 12px 32px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.18s;z-index:80;text-align:center}
   #toast.on{opacity:1;transform:translate(-50%,0)}
@@ -227,7 +228,7 @@
 
     <section class="view" id="view-models">
       <div class="library-head"><b id="modelCount"></b><span>按型号/数字搜 · 最低回收价 / 价2 并列</span></div>
-      <details class="add-box" open>
+      <details class="add-box">
         <summary>口径说明：板型 / 496 / D3 D4 / Bxxx / JZ</summary>
         <div class="note" style="margin:8px 0 0;font-size:12px;line-height:1.7">
           <p><b>板型（按芯片封装，不按型号首字母）：</b>顶配 = 运存+存储在同一个 eMCP/uMCP 封装里，CPU 独立，整板 2 颗；盖子板 = 运存 PoP 叠在 CPU 上，存储独立，496/556-ball LPDDR5；三颗料 = CPU、运存、存储三颗完全独立，对应 200/178-ball 板型；存储 = 单颗 eMMC/UFS，本身不含运存，板型要看主板运存。</p>
@@ -1552,6 +1553,7 @@
   let filterFamily = "全部";
   let filterCat = "全部";
   let modelSearch = "";
+  let modelLimit = 60;
 
   function loadState(){
     try {
@@ -1876,17 +1878,21 @@
   function renderModels(){
     $("#modelCount").textContent = `型号库 ${ALL.length} 条`;
     const q = modelSearch.trim();
-    const results = q ? search(q, "全部", "全部", "全部", 60) : ALL.slice().sort((a,b) => b.rank - a.rank || a.model.localeCompare(b.model)).slice(0, 60).map(m => ({m, sc: 0}));
-    if (!results.length) {
+    const all = q ? search(q, "全部", "全部", "全部", 0) : ALL.slice().sort((a,b) => b.rank - a.rank || a.model.localeCompare(b.model)).map(m => ({m, sc: 0}));
+    if (!all.length) {
       $("#modelList").innerHTML = `<div class="empty">没有匹配的型号。</div>`;
       return;
     }
-    $("#modelList").innerHTML = results.map(({m}) => `<div class="model-row">
+    $("#modelList").innerHTML = all.slice(0, modelLimit).map(({m}) => `<div class="model-row">
       <div class="m"><b>${esc(m.model)}</b></div>
       <div class="d"><span class="badge fam">${esc(m.family)}</span><span class="badge">${esc(m.brand)}</span>${m.cat ? `<span class="badge cat${m.cat==="待核"?" wait":""}">${esc(m.cat)}</span>` : ""}${m.balls ? `<span>${m.balls}球</span>` : ""}<span>${esc(cfg(m))}</span>${m.bucket ? `<span class="badge bucket">${esc(m.bucket)}</span>` : ""}<span class="plabel">${m.ref ? "参考价" : "最低回收价"}</span>${m.price != null ? `<span>¥${m.price}</span>` : `<span>询价</span>`}${m.ref ? `<span class="badge ref">参考</span>` : ""}${m.wd != null ? `<span class="plabel p2">价2</span><span class="price2">¥${m.wd}</span>` : ""}${m.custom ? `<button class="del" data-del="${esc(m.id)}">删除</button>` : ""}</div>
       ${m.note ? `<div class="d">${esc(m.note)}</div>` : ""}
     </div>`).join("");
-    if (!q && ALL.length > 60) $("#modelList").innerHTML += `<div class="more">只显示前 60 条；上面搜索可查全库。</div>`;
+    if (all.length > modelLimit) {
+      $("#modelList").innerHTML += `<button class="loadmore" id="loadMoreModels">点击继续加载（${Math.min(modelLimit, all.length)}/${all.length}）</button>`;
+      const lb = $("#loadMoreModels");
+      if (lb) lb.addEventListener("click", () => { modelLimit += 60; renderModels(); });
+    }
   }
 
   function toast(msg){
@@ -2060,7 +2066,7 @@
   });
 
   $("#batch").addEventListener("change", () => { state.batch = $("#batch").value.trim() || "批次1"; save(); });
-  $("#modelQuery").addEventListener("input", () => { modelSearch = $("#modelQuery").value; renderModels(); });
+  $("#modelQuery").addEventListener("input", () => { modelSearch = $("#modelQuery").value; modelLimit = 60; renderModels(); });
   $("#restoreFile").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) restore(f); e.target.value = ""; });
 
   document.addEventListener("click", (e) => {
