@@ -173,6 +173,20 @@
   @media (min-width:700px){
     .key{height:48px}
   }
+
+  .pop-mask{position:fixed;inset:0;background:rgba(18,33,43,.45);display:none;align-items:flex-end;justify-content:center;z-index:80;padding:0 10px 16px}
+  .pop-mask.on{display:flex}
+  .pop-card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 40px rgba(18,33,43,.28);width:min(560px,100%);max-height:74vh;overflow-y:auto;padding:14px 16px 12px;-webkit-overflow-scrolling:touch}
+  .pop-card h3{margin:0;padding-right:26px;font-family:var(--mono);font-size:20px;letter-spacing:-.01em;word-break:break-all}
+  .pop-card .pmeta{margin-top:2px;font-size:12.5px;color:var(--muted)}
+  .pop-close{position:absolute;top:6px;right:8px;border:0;background:none;padding:2px 8px;font-size:22px;line-height:1;color:var(--muted)}
+  .prow{display:flex;justify-content:space-between;gap:12px;border-top:1px dashed var(--line);padding:7px 0;font-size:13px}
+  .prow .pk{color:var(--muted);flex:0 0 auto}
+  .prow .pv{font-family:var(--mono);font-weight:700;font-size:15px;text-align:right;word-break:break-all}
+  .pnote{margin-top:8px;padding:7px 9px;font-size:12px;line-height:1.55;color:#5f5a4f;background:#faf6ec;border:1px solid var(--line);border-radius:10px}
+  .pacts{margin-top:12px;display:flex;gap:8px}
+  .pacts button{flex:1;padding:12px 0;border-radius:12px;font-size:16px;font-weight:600}
+  .pacts button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
 </style>
 </head>
 <body>
@@ -262,6 +276,7 @@
     </section>
   </main>
 </div>
+<div class="pop-mask" id="popMask"><div class="pop-card" id="pop"></div></div>
 <div id="toast"></div>
 
 <script>
@@ -1942,7 +1957,7 @@
     } else if (q.replace(/\D/g,"").length <= 2) {
       hint.innerHTML = `匹配 <b>${results.length}</b> 个；再输一位，或加前缀字母更快（如 H9HQ53）。`;
     } else {
-      hint.innerHTML = `匹配 <b>${results.length}</b> 个；列表可上滑，点候选直接入库。`;
+      hint.innerHTML = `匹配 <b>${results.length}</b> 个；点候选弹出详情卡，卡里按“入库”记一块。`;
     }
     if (!results.length) {
       $("#candidates").innerHTML = `<div class="empty"><b>没有候选</b><br>试试：少输一位 / 换品牌 / 点“字母键盘”输完整型号</div>`;
@@ -1964,6 +1979,25 @@
       </button>`;
     }).join("");
   }
+
+  let popId = null;
+  function openPop(m){
+    popId = m.id;
+    const al = shownAliases(m);
+    const prow = (k, v) => `<div class="prow"><span class="pk">${k}</span><span class="pv">${v}</span></div>`;
+    $("#pop").innerHTML = `
+      <button class="pop-close" type="button" aria-label="关闭">×</button>
+      <h3>${esc(m.model)}</h3>
+      <div class="pmeta">${esc(m.brand)} · ${esc(m.family)}${m.balls ? " · " + m.balls + "球" : ""} · ${esc(cfg(m))}${m.cat ? " · " + esc(m.cat) : ""}${m.bucket ? " · " + esc(m.bucket) : ""}</div>
+      ${prow(m.ref ? "参考价" : "最低回收价", m.price != null ? "¥" + m.price : "询价")}
+      ${prow("价2", m.wd != null ? "¥" + m.wd : "—")}
+      ${al.length ? prow("别名", esc(al.join(" / "))) : ""}
+      ${m.note ? `<div class="pnote">${esc(m.note)}</div>` : ""}
+      <div class="pacts"><button class="primary pop-add" type="button">入库</button></div>`;
+    $("#popMask").classList.add("on");
+  }
+  function closePop(){ popId = null; $("#popMask").classList.remove("on"); }
+  function popConfirm(){ const m = ALL.find(x => x.id === popId); closePop(); if (m) selectModel(m); }
 
   function selectModel(m){
     if (!m) return;
@@ -2009,7 +2043,7 @@
       <div class="stat warn"><div class="n">${unknown}</div><div class="l">未知</div></div>`;
     $("#scanCount").textContent = total + " 块";
     if (!recs.length) {
-      $("#recordList").innerHTML = `<div class="empty"><b>还没有记录</b><br>在“录入”页输数字，点候选；每点一次记一块。</div>`;
+      $("#recordList").innerHTML = `<div class="empty"><b>还没有记录</b><br>在“录入”页输数字，点候选弹出详情卡，卡里按“入库”记一块。</div>`;
       return;
     }
     const rows = recs.slice().reverse().slice(0, 80).map(r => {
@@ -2213,7 +2247,7 @@
     const cand = t.closest && t.closest(".cand");
     if (cand) {
       const m = ALL.find(x => x.id === cand.dataset.id);
-      if (m) selectModel(m);
+      if (m) openPop(m);
     }
     const key = t.closest && t.closest("[data-key]");
     if (key) appendKey(key.dataset.key);
@@ -2240,11 +2274,21 @@
     }
   });
 
+    $("#popMask").addEventListener("click", (e) => {
+    if (e.target.closest(".pop-add")) { popConfirm(); return; }
+    if (e.target.id === "popMask" || e.target.closest(".pop-close")) closePop();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (!$("#popMask").classList.contains("on")) return;
+    if (e.key === "Escape") { e.preventDefault(); closePop(); }
+    if (e.key === "Enter") { e.preventDefault(); popConfirm(); }
+  });
   $("#query").addEventListener("input", renderCandidates);
   $("#query").addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
+      if ($("#popMask").classList.contains("on")) return;
       const first = $("#candidates .cand");
-      if (first) first.click();
+      if (first) { first.click(); e.stopPropagation(); }
     }
   });
 
